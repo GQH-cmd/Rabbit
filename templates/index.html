@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>兔子谱系识别系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div class="app">
+
+    <header class="header">
+        <h1>兔子养殖中心谱系识别系统</h1>
+        <p>用于录入兔子信息、递归查询谱系、筛选纯种</p>
+    </header>
+
+    <!-- 新增兔子模块 -->
+    <section class="panel">
+        <h2>新增兔子信息</h2>
+        <div class="form-grid">
+            <input id="RabbitID" placeholder="RabbitID">
+            <input id="Name" placeholder="Name">
+            <select id="Gender">
+                <option value="">Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+            <input id="BirthDate" type="date">
+            <input id="Bloodline" placeholder="Bloodline">
+            <input id="FatherID" placeholder="FatherID">
+            <input id="MotherID" placeholder="MotherID">
+            <input id="Home" placeholder="Home">
+        </div>
+        <button onclick="addRabbit()">添加兔子</button>
+    </section>
+
+    <!-- 兔子列表 -->
+    <section class="panel">
+        <h2>兔子列表</h2>
+        <button onclick="loadRabbits()">刷新列表</button>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>RabbitID</th>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>BirthDate</th>
+                        <th>Bloodline</th>
+                        <th>FatherID</th>
+                        <th>MotherID</th>
+                        <th>Home</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="rabbitTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 谱系查询 -->
+    <section class="panel">
+        <h2>谱系查询</h2>
+        <div class="query-row">
+            <input id="queryRabbitID" placeholder="RabbitID">
+            <input id="lineageDepth" type="number" min="1" value="3">
+            <button onclick="queryLineage()">查询谱系</button>
+        </div>
+        <div id="lineageResult" class="lineage-box"></div>
+    </section>
+
+    <!-- 纯种筛选 -->
+    <section class="panel">
+        <h2>纯种兔子筛选</h2>
+        <div class="query-row">
+            <input id="pureDepth" type="number" min="1" value="2">
+            <input id="pureBloodline" placeholder="血统筛选，可空">
+            <button onclick="queryPurebred()">筛选纯种</button>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>RabbitID</th>
+                        <th>Name</th>
+                        <th>Gender</th>
+                        <th>BirthDate</th>
+                        <th>Bloodline</th>
+                        <th>FatherID</th>
+                        <th>MotherID</th>
+                        <th>Home</th>
+                    </tr>
+                </thead>
+                <tbody id="pureTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+
+<script src="/static/main.js"></script>
+</body>
+</html>

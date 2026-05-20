@@ -1,0 +1,292 @@
+import sqlite3
+from flask import Flask, render_template, request, jsonify
+
+app = Flask(__name__)
+
+DB_NAME = "rabbit_lineage.db"
+
+
+def get_conn():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS Rabbit (
+        RabbitID TEXT PRIMARY KEY,
+        Name TEXT,
+        Gender TEXT CHECK(Gender IN ('Male', 'Female')),
+        BirthDate TEXT,
+        Bloodline TEXT,
+        FatherID TEXT,
+        MotherID TEXT,
+        Home TEXT
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def row_to_dict(row):
+    return dict(row) if row else None
+
+
+def get_rabbit_by_id(rabbit_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+    FROM Rabbit
+    WHERE RabbitID = ?
+    """, (rabbit_id,))
+
+    row = cursor.fetchone()
+    conn.close()
+
+    return row_to_dict(row)
+
+
+def build_lineage_tree(rabbit_id, depth=3):
+    """
+    递归生成谱系树
+    depth=1：查父母
+    depth=2：查祖父母
+    depth=3：查曾祖父母
+    """
+
+    rabbit = get_rabbit_by_id(rabbit_id)
+
+    if not rabbit:
+        return None
+
+    node = {
+        "RabbitID": rabbit["RabbitID"],
+        "Name": rabbit["Name"],
+        "Gender": rabbit["Gender"],
+        "BirthDate": rabbit["BirthDate"],
+        "Bloodline": rabbit["Bloodline"],
+        "Home": rabbit["Home"],
+        "FatherID": rabbit["FatherID"],
+        "MotherID": rabbit["MotherID"],
+        "Father": None,
+        "Mother": None
+    }
+
+    if depth <= 0:
+        return node
+
+    if rabbit["FatherID"]:
+        node["Father"] = build_lineage_tree(rabbit["FatherID"], depth - 1)
+
+    if rabbit["MotherID"]:
+        node["Mother"] = build_lineage_tree(rabbit["MotherID"], depth - 1)
+
+    return node
+
+
+def check_purebred_recursive(rabbit_id, target_bloodline=None, depth=3):
+    """
+    递归判断是否纯种。
+
+    判断逻辑：
+    1. 当前兔子必须存在；
+    2. 当前兔子必须有 Bloodline；
+    3. 如果未指定 target_bloodline，则以当前兔子的 Bloodline 作为目标血统；
+    4. 当前兔子的 Bloodline 必须等于目标血统；
+    5. 如果 depth > 0，则继续检查父母；
+    6. 父母必须存在，且父母血统也必须一致；
+    7. 递归检查祖父母、曾祖父母等。
+    """
+
+    rabbit = get_rabbit_by_id(rabbit_id)
+
+    if not rabbit:
+        return False
+
+    if not rabbit["Bloodline"]:
+        return False
+
+    if target_bloodline is None:
+        target_bloodline = rabbit["Bloodline"]
+
+    if rabbit["Bloodline"] != target_bloodline:
+        return False
+
+    if depth <= 0:
+        return True
+
+    father_id = rabbit["FatherID"]
+    mother_id = rabbit["MotherID"]
+
+    if not father_id or not mother_id:
+        return False
+
+    father_ok = check_purebred_recursive(
+        father_id,
+        target_bloodline=target_bloodline,
+        depth=depth - 1
+    )
+
+    mother_ok = check_purebred_recursive(
+        mother_id,
+        target_bloodline=target_bloodline,
+        depth=depth - 1
+    )
+
+    return father_ok and mother_ok
+
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+@app.route("/api/rabbits", methods=["GET"])
+def get_rabbits():
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+    FROM Rabbit
+    ORDER BY RabbitID
+    """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    data = [row_to_dict(row) for row in rows]
+    return jsonify(data)
+
+
+@app.route("/api/rabbits", methods=["POST"])
+def add_rabbit():
+    data = request.json
+
+    rabbit_id = data.get("RabbitID")
+    name = data.get("Name")
+    gender = data.get("Gender")
+    birth_date = data.get("BirthDate")
+    bloodline = data.get("Bloodline")
+    father_id = data.get("FatherID") or None
+    mother_id = data.get("MotherID") or None
+    home = data.get("Home")
+
+    if not rabbit_id:
+        return jsonify({"success": False, "message": "RabbitID 不能为空"}), 400
+
+    if gender not in ["Male", "Female"]:
+        return jsonify({"success": False, "message": "Gender 必须是 Male 或 Female"}), 400
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+        INSERT INTO Rabbit (
+            RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            rabbit_id,
+            name,
+            gender,
+            birth_date,
+            bloodline,
+            father_id,
+            mother_id,
+            home
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "兔子信息添加成功"})
+
+    except sqlite3.IntegrityError as e:
+        conn.close()
+        return jsonify({
+            "success": False,
+            "message": f"添加失败，可能是 RabbitID 已存在或性别格式错误：{str(e)}"
+        }), 400
+
+
+@app.route("/api/lineage/<rabbit_id>", methods=["GET"])
+def get_lineage(rabbit_id):
+    depth = int(request.args.get("depth", 3))
+
+    tree = build_lineage_tree(rabbit_id, depth=depth)
+
+    if not tree:
+        return jsonify({"success": False, "message": "未找到该兔子"}), 404
+
+    return jsonify({
+        "success": True,
+        "data": tree
+    })
+
+
+@app.route("/api/purebred", methods=["GET"])
+def get_purebred():
+    depth = int(request.args.get("depth", 2))
+    bloodline_filter = request.args.get("bloodline", "").strip()
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    if bloodline_filter:
+        cursor.execute("""
+        SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+        FROM Rabbit
+        WHERE Bloodline = ?
+        ORDER BY RabbitID
+        """, (bloodline_filter,))
+    else:
+        cursor.execute("""
+        SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+        FROM Rabbit
+        ORDER BY RabbitID
+        """)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    result = []
+
+    for row in rows:
+        rabbit = row_to_dict(row)
+
+        is_pure = check_purebred_recursive(
+            rabbit["RabbitID"],
+            target_bloodline=rabbit["Bloodline"],
+            depth=depth
+        )
+
+        if is_pure:
+            result.append(rabbit)
+
+    return jsonify(result)
+
+
+@app.route("/api/delete/<rabbit_id>", methods=["DELETE"])
+def delete_rabbit(rabbit_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM Rabbit WHERE RabbitID = ?", (rabbit_id,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({"success": True, "message": "删除成功"})
+
+
+if __name__ == "__main__":
+    init_db()
+    app.run(debug=True)
