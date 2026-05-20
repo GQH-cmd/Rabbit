@@ -1,7 +1,17 @@
+<<<<<<< HEAD
+=======
+// 缓存兔子列表，方便编辑时填充
+let rabbitCache = [];
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 // 加载兔子列表
 async function loadRabbits() {
     const res = await fetch("/api/rabbits");
     const data = await res.json();
+<<<<<<< HEAD
+=======
+    rabbitCache = data;
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
     const tbody = document.getElementById("rabbitTable");
     tbody.innerHTML = "";
     data.forEach(r => {
@@ -12,10 +22,20 @@ async function loadRabbits() {
             <td>${r.Gender}</td>
             <td>${r.BirthDate}</td>
             <td>${r.Bloodline}</td>
+<<<<<<< HEAD
             <td>${r.FatherID}</td>
             <td>${r.MotherID}</td>
             <td>${r.Home}</td>
             <td><button class="delete-btn" onclick="deleteRabbit('${r.RabbitID}')">删除</button></td>
+=======
+            <td>${r.FatherID || ""}</td>
+            <td>${r.MotherID || ""}</td>
+            <td>${r.Home}</td>
+            <td>
+                <button class="edit-btn" onclick="openEditModal('${r.RabbitID}')">编辑</button>
+                <button class="delete-btn" onclick="deleteRabbit('${r.RabbitID}')">删除</button>
+            </td>
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
         `;
         tbody.appendChild(tr);
     });
@@ -52,6 +72,69 @@ async function deleteRabbit(rabbitID) {
     loadRabbits();
 }
 
+<<<<<<< HEAD
+=======
+// ========== 编辑功能 ==========
+
+function openEditModal(rabbitID) {
+    const rabbit = rabbitCache.find(r => r.RabbitID === rabbitID);
+    if (!rabbit) {
+        alert("未找到该兔子数据");
+        return;
+    }
+
+    document.getElementById("editRabbitID").value = rabbit.RabbitID;
+    document.getElementById("editName").value = rabbit.Name || "";
+    document.getElementById("editGender").value = rabbit.Gender || "Male";
+    document.getElementById("editBirthDate").value = rabbit.BirthDate || "";
+    document.getElementById("editBloodline").value = rabbit.Bloodline || "";
+    document.getElementById("editFatherID").value = rabbit.FatherID || "";
+    document.getElementById("editMotherID").value = rabbit.MotherID || "";
+    document.getElementById("editHome").value = rabbit.Home || "";
+
+    document.getElementById("editModal").style.display = "flex";
+}
+
+function closeEditModal() {
+    document.getElementById("editModal").style.display = "none";
+}
+
+async function saveEdit() {
+    const rabbitID = document.getElementById("editRabbitID").value;
+    const data = {
+        Name: document.getElementById("editName").value.trim(),
+        Gender: document.getElementById("editGender").value,
+        BirthDate: document.getElementById("editBirthDate").value,
+        Bloodline: document.getElementById("editBloodline").value.trim(),
+        FatherID: document.getElementById("editFatherID").value.trim(),
+        MotherID: document.getElementById("editMotherID").value.trim(),
+        Home: document.getElementById("editHome").value.trim()
+    };
+
+    const res = await fetch(`/api/rabbits/${rabbitID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    alert(result.message);
+
+    if (result.success) {
+        closeEditModal();
+        loadRabbits();
+    }
+}
+
+// 点击弹窗外部关闭
+document.addEventListener("click", function(e) {
+    const modal = document.getElementById("editModal");
+    if (e.target === modal) {
+        closeEditModal();
+    }
+});
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 // 查询谱系
 async function queryLineage() {
     const rabbitID = document.getElementById("queryRabbitID").value.trim();

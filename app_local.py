@@ -53,6 +53,37 @@ def get_rabbit_by_id(rabbit_id):
     return row_to_dict(row)
 
 
+<<<<<<< HEAD
+=======
+def validate_parents(father_id, mother_id):
+    """
+    校验父母合法性。
+    返回 (is_valid, error_message)
+    """
+    # 1. 父母不能是同一只
+    if father_id and mother_id and father_id == mother_id:
+        return False, "父亲和母亲不能是同一只兔子"
+
+    # 2. 检查父亲存在且性别为 Male
+    if father_id:
+        father = get_rabbit_by_id(father_id)
+        if not father:
+            return False, f"父亲 {father_id} 不存在，请先录入该兔子"
+        if father.get("Gender") != "Male":
+            return False, f"父亲 {father_id} 的性别不是 Male（当前为 {father.get('Gender') or '未填写'}）"
+
+    # 3. 检查母亲存在且性别为 Female
+    if mother_id:
+        mother = get_rabbit_by_id(mother_id)
+        if not mother:
+            return False, f"母亲 {mother_id} 不存在，请先录入该兔子"
+        if mother.get("Gender") != "Female":
+            return False, f"母亲 {mother_id} 的性别不是 Female（当前为 {mother.get('Gender') or '未填写'}）"
+
+    return True, ""
+
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 def build_lineage_tree(rabbit_id, depth=3):
     """
     递归生成谱系树
@@ -185,6 +216,14 @@ def add_rabbit():
     if gender not in ["Male", "Female"]:
         return jsonify({"success": False, "message": "Gender 必须是 Male 或 Female"}), 400
 
+<<<<<<< HEAD
+=======
+    # 校验父母合法性
+    valid, msg = validate_parents(father_id, mother_id)
+    if not valid:
+        return jsonify({"success": False, "message": msg}), 400
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
     conn = get_conn()
     cursor = conn.cursor()
 
@@ -218,6 +257,64 @@ def add_rabbit():
         }), 400
 
 
+<<<<<<< HEAD
+=======
+@app.route("/api/rabbits/<rabbit_id>", methods=["PUT", "PATCH"])
+def update_rabbit(rabbit_id):
+    data = request.json or {}
+
+    # 先查一下兔子在不在
+    rabbit = get_rabbit_by_id(rabbit_id)
+    if not rabbit:
+        return jsonify({"success": False, "message": "未找到该兔子"}), 404
+
+    # 用旧值当默认值，只覆盖前端传了的字段
+    name = data.get("Name", rabbit["Name"])
+    gender = data.get("Gender", rabbit["Gender"])
+    birth_date = data.get("BirthDate", rabbit["BirthDate"])
+    bloodline = data.get("Bloodline", rabbit["Bloodline"])
+    home = data.get("Home", rabbit["Home"])
+
+    # 父母 ID 特殊处理：前端传了空字符串就置为 None
+    father_id = data.get("FatherID", rabbit["FatherID"])
+    if "FatherID" in data and not data["FatherID"]:
+        father_id = None
+
+    mother_id = data.get("MotherID", rabbit["MotherID"])
+    if "MotherID" in data and not data["MotherID"]:
+        mother_id = None
+
+    # 性别校验
+    if gender not in ["Male", "Female"]:
+        return jsonify({"success": False, "message": "Gender 必须是 Male 或 Female"}), 400
+
+    # 校验父母合法性（编辑时也要检查）
+    valid, msg = validate_parents(father_id, mother_id)
+    if not valid:
+        return jsonify({"success": False, "message": msg}), 400
+
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("""
+            UPDATE Rabbit
+            SET Name = ?, Gender = ?, BirthDate = ?, Bloodline = ?,
+                FatherID = ?, MotherID = ?, Home = ?
+            WHERE RabbitID = ?
+        """, (name, gender, birth_date, bloodline, father_id, mother_id, home, rabbit_id))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({"success": True, "message": "兔子信息更新成功"})
+
+    except sqlite3.IntegrityError as e:
+        conn.close()
+        return jsonify({"success": False, "message": f"更新失败：{str(e)}"}), 400
+
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 @app.route("/api/lineage/<rabbit_id>", methods=["GET"])
 def get_lineage(rabbit_id):
     depth = int(request.args.get("depth", 3))

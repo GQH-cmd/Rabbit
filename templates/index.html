@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <title>兔子谱系识别系统</title>
     <link rel="stylesheet" href="/static/style.css">
+<<<<<<< HEAD
+=======
+<base target="_blank">
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 </head>
 <body>
 
@@ -98,6 +102,33 @@
 
 </div>
 
+<<<<<<< HEAD
+=======
+<!-- 编辑弹窗 -->
+<div id="editModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <h3>编辑兔子信息</h3>
+        <div class="form-grid">
+            <input id="editRabbitID" placeholder="RabbitID" disabled>
+            <input id="editName" placeholder="Name">
+            <select id="editGender">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+            <input id="editBirthDate" type="date">
+            <input id="editBloodline" placeholder="Bloodline">
+            <input id="editFatherID" placeholder="FatherID">
+            <input id="editMotherID" placeholder="MotherID">
+            <input id="editHome" placeholder="Home">
+        </div>
+        <div class="modal-actions">
+            <button onclick="saveEdit()">保存修改</button>
+            <button class="cancel-btn" onclick="closeEditModal()">取消</button>
+        </div>
+    </div>
+</div>
+
+>>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 <script src="/static/main.js"></script>
 </body>
 </html>
