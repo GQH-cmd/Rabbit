@@ -1,0 +1,7 @@
+Flask
+fastapi
+pydantic
+SQLAlchemy
+PyMySQL
+qrcode[pil]
+uvicorn
