@@ -1,31 +1,49 @@
-import sqlite3
+#修改导入库
+import psycopg2
+import psycopg2.extras
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-DB_NAME = "rabbit_lineage.db"
+#改成 PostgreSQL 配置
+DB_CONFIG = {
+    "host": "localhost",
+    "port": 5432,
+    "database": "rabbit_lineage",
+    "user": "postgres",
+    "password": 123456
+}
 
-
+#核心修改
 def get_conn():
-    conn = sqlite3.connect(DB_NAME)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+    return psycopg2.connect(**DB_CONFIG)
 
 def init_db():
     conn = get_conn()
-    cursor = conn.cursor()
+    #修改查询方式后面的也全部修改
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+#建表SQL改动
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS Rabbit (
-        RabbitID TEXT PRIMARY KEY,
-        Name TEXT,
-        Gender TEXT CHECK(Gender IN ('Male', 'Female')),
-        BirthDate TEXT,
-        Bloodline TEXT,
-        FatherID TEXT,
-        MotherID TEXT,
-        Home TEXT
+        RabbitID VARCHAR(50) PRIMARY KEY,
+        Name VARCHAR(100),
+        Gender VARCHAR(10) CHECK (Gender IN ('Male', 'Female')),
+        BirthDate DATE,
+        Bloodline VARCHAR(100),
+        FatherID VARCHAR(50),
+        MotherID VARCHAR(50),
+        Home VARCHAR(100),
+
+        CONSTRAINT fk_father
+            FOREIGN KEY (FatherID)
+            REFERENCES Rabbit(RabbitID)
+            ON DELETE SET NULL,
+
+        CONSTRAINT fk_mother
+            FOREIGN KEY (MotherID)
+            REFERENCES Rabbit(RabbitID)
+            ON DELETE SET NULL
     )
     """)
 
@@ -36,15 +54,24 @@ def init_db():
 def row_to_dict(row):
     return dict(row) if row else None
 
-
+#所有？改成%s
 def get_rabbit_by_id(rabbit_id):
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+#修改：在select语句加别名
     cursor.execute("""
-    SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
+    SELECT 
+        RabbitID AS "RabbitID",
+        Name AS "Name",
+        Gender AS "Gender",
+        BirthDate AS "BirthDate",
+        Bloodline AS "Bloodline",
+        FatherID AS "FatherID",
+        MotherID AS "MotherID",
+        Home AS "Home"
     FROM Rabbit
-    WHERE RabbitID = ?
+    WHERE RabbitID = %s
     """, (rabbit_id,))
 
     row = cursor.fetchone()
@@ -53,8 +80,6 @@ def get_rabbit_by_id(rabbit_id):
     return row_to_dict(row)
 
 
-<<<<<<< HEAD
-=======
 def validate_parents(father_id, mother_id):
     """
     校验父母合法性。
@@ -83,7 +108,6 @@ def validate_parents(father_id, mother_id):
     return True, ""
 
 
->>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 def build_lineage_tree(rabbit_id, depth=3):
     """
     递归生成谱系树
@@ -182,7 +206,7 @@ def index():
 @app.route("/api/rabbits", methods=["GET"])
 def get_rabbits():
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     cursor.execute("""
     SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
@@ -216,23 +240,20 @@ def add_rabbit():
     if gender not in ["Male", "Female"]:
         return jsonify({"success": False, "message": "Gender 必须是 Male 或 Female"}), 400
 
-<<<<<<< HEAD
-=======
     # 校验父母合法性
     valid, msg = validate_parents(father_id, mother_id)
     if not valid:
         return jsonify({"success": False, "message": msg}), 400
 
->>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
         cursor.execute("""
         INSERT INTO Rabbit (
             RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             rabbit_id,
             name,
@@ -249,16 +270,16 @@ def add_rabbit():
 
         return jsonify({"success": True, "message": "兔子信息添加成功"})
 
-    except sqlite3.IntegrityError as e:
+#修改
+    except psycopg2.IntegrityError as e:
         conn.close()
+        conn.rollback()
         return jsonify({
             "success": False,
             "message": f"添加失败，可能是 RabbitID 已存在或性别格式错误：{str(e)}"
         }), 400
 
 
-<<<<<<< HEAD
-=======
 @app.route("/api/rabbits/<rabbit_id>", methods=["PUT", "PATCH"])
 def update_rabbit(rabbit_id):
     data = request.json or {}
@@ -294,14 +315,14 @@ def update_rabbit(rabbit_id):
         return jsonify({"success": False, "message": msg}), 400
 
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
         cursor.execute("""
             UPDATE Rabbit
-            SET Name = ?, Gender = ?, BirthDate = ?, Bloodline = ?,
-                FatherID = ?, MotherID = ?, Home = ?
-            WHERE RabbitID = ?
+            SET Name = %s, Gender = %s, BirthDate = %s, Bloodline = %s,
+                FatherID = %s, MotherID = %s, Home = %s
+            WHERE RabbitID = %s
         """, (name, gender, birth_date, bloodline, father_id, mother_id, home, rabbit_id))
 
         conn.commit()
@@ -309,12 +330,11 @@ def update_rabbit(rabbit_id):
 
         return jsonify({"success": True, "message": "兔子信息更新成功"})
 
-    except sqlite3.IntegrityError as e:
+    except psycopg2.IntegrityError as e:
         conn.close()
         return jsonify({"success": False, "message": f"更新失败：{str(e)}"}), 400
 
 
->>>>>>> d490741 (精华1.0之仅保留传统性取向&增加修改功能)
 @app.route("/api/lineage/<rabbit_id>", methods=["GET"])
 def get_lineage(rabbit_id):
     depth = int(request.args.get("depth", 3))
@@ -336,13 +356,13 @@ def get_purebred():
     bloodline_filter = request.args.get("bloodline", "").strip()
 
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if bloodline_filter:
         cursor.execute("""
         SELECT RabbitID, Name, Gender, BirthDate, Bloodline, FatherID, MotherID, Home
         FROM Rabbit
-        WHERE Bloodline = ?
+        WHERE Bloodline = %s
         ORDER BY RabbitID
         """, (bloodline_filter,))
     else:
@@ -375,9 +395,9 @@ def get_purebred():
 @app.route("/api/delete/<rabbit_id>", methods=["DELETE"])
 def delete_rabbit(rabbit_id):
     conn = get_conn()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    cursor.execute("DELETE FROM Rabbit WHERE RabbitID = ?", (rabbit_id,))
+    cursor.execute("DELETE FROM Rabbit WHERE RabbitID = %s", (rabbit_id,))
     conn.commit()
     conn.close()
 
