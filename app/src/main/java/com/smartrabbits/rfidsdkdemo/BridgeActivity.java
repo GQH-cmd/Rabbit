@@ -17,10 +17,15 @@ public class BridgeActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bridge);
 
+        // ======== 开启 WebView 远程调试（Chrome inspect）========
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+        // =========================================================
+
         mWebView = findViewById(R.id.webview);
-        // 1. 开启 JavaScript
         mWebView.getSettings().setJavaScriptEnabled(true);
-        // 2. 允许混合内容（HTTP 资源在 HTTPS 或不安全网络下也能加载）
+        // 允许混合内容（HTTP 资源在 WebView 中正常加载）
         mWebView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
         // 初始化 RfidManager（打开串口）
@@ -40,8 +45,23 @@ public class BridgeActivity extends AppCompatActivity {
         mRfidBridge = new RfidBridge(mWebView, mRfidManager);
         mWebView.addJavascriptInterface(mRfidBridge, "RfidBridge");
 
-        // 加载前端远程网页（你的目标地址）
-        mWebView.setWebViewClient(new WebViewClient());
+        // 加载前端网页，并检测桥接注入状态
+        mWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                // 检测 RfidBridge 是否注入成功
+                view.evaluateJavascript("typeof window.RfidBridge !== 'undefined'", value -> {
+                    runOnUiThread(() -> {
+                        if ("true".equals(value)) {
+                            Toast.makeText(BridgeActivity.this, "✅ RfidBridge 已注入", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(BridgeActivity.this, "❌ RfidBridge 未注入！", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                });
+            }
+        });
         mWebView.loadUrl("http://10.198.39.253:5000/");
     }
 
