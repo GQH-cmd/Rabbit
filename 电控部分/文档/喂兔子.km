@@ -1,0 +1,1096 @@
+{
+    "root": {
+        "data": {
+            "id": "diftx3b0ro80",
+            "created": 1778500806622,
+            "text": "兔笼水系统设计"
+        },
+        "children": [
+            {
+                "data": {
+                    "id": "difu1705nt40",
+                    "created": 1778501128129,
+                    "text": "系统需求",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difuaz16e080",
+                            "created": 1778501894418,
+                            "text": "自动释放羊奶",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difugv3km740",
+                                    "created": 1778502356040,
+                                    "text": "定时释放",
+                                    "layout": null
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difugxx0pt40",
+                                    "created": 1778502362174,
+                                    "text": "按需释放",
+                                    "layout": null
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuh48z06g0",
+                                            "created": 1778502375958,
+                                            "text": "兔笼内设置压力板",
+                                            "layout": null
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difuh8g1rp40",
+                                                    "created": 1778502385093,
+                                                    "text": "幼兔自行按压压力板",
+                                                    "layout": null
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difubcypcw80",
+                            "created": 1778501924743,
+                            "text": "自动清洗管道",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difuj6awyxk0",
+                                    "created": 1778502537157,
+                                    "text": "清洗顺序"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuj9asfvs0",
+                                            "created": 1778502543680,
+                                            "text": "先清洁剂清洗"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difujfofv2w0",
+                                            "created": 1778502557566,
+                                            "text": "后清水冲洗"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "difujnhbjz40",
+                                    "created": 1778502574550,
+                                    "text": "清洗需求"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuk55v78o0",
+                                            "created": 1778502613039,
+                                            "text": "定时清洗"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difuk70vjk00",
+                                            "created": 1778502617091,
+                                            "text": "按需清洗"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difuk95hug00",
+                                                    "created": 1778502621724,
+                                                    "text": "幼兔喝完奶即刻清洗"
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difubh4c20w0",
+                            "created": 1778501933791,
+                            "text": "废液分离排放",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difukmkay080",
+                                    "created": 1778502650918,
+                                    "text": "设置废水槽统一处理"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difubrfpx400",
+                            "created": 1778501956247,
+                            "text": "不惊吓幼兔",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "diful3jeta00",
+                                    "created": 1778502687869,
+                                    "text": "模仿母兔皮毛与奶头"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difubzyxkzk0",
+                            "created": 1778501974823,
+                            "text": "兔笼内结构不影响幼兔活动",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difuly7jhk80",
+                                    "created": 1778502754631,
+                                    "text": "走线布设于兔笼顶端"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difu15dbt0g0",
+                    "created": 1778501124571,
+                    "text": "系统组成",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difuckxsewg0",
+                            "created": 1778502020466,
+                            "text": "进水",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difug4g3de80",
+                                    "created": 1778502298024,
+                                    "text": "压力泵",
+                                    "layout": null
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difums4ty3s0",
+                                    "created": 1778502819771,
+                                    "text": "储液罐"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difumuxngmw0",
+                                            "created": 1778502825867,
+                                            "text": "羊奶"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difumwxs3pc0",
+                                            "created": 1778502830229,
+                                            "text": "清洁剂"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difumybvuns0",
+                                            "created": 1778502833258,
+                                            "text": "清水"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "difup03os480",
+                                    "created": 1778502993844,
+                                    "text": "储液罐出液阀门"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difucsnlgww0",
+                            "created": 1778502037264,
+                            "text": "兔笼内管道",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difun1uedt40",
+                                    "created": 1778502840908,
+                                    "text": "管道进/出笼打孔位"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difv1tu26rk0",
+                                            "created": 1778503998936,
+                                            "text": "打孔孔径略大于管道孔径"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difv22svnhc0",
+                                                    "created": 1778504018455,
+                                                    "text": "便于管道伸缩"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv27f12o80",
+                                                            "created": 1778504028502,
+                                                            "text": "考虑到龙门架移动管道"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "difuo4abjt40",
+                                    "created": 1778502924588,
+                                    "text": "出液口设计"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuo7ud1wo0",
+                                            "created": 1778502932331,
+                                            "text": "数量"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difv0rsw2yw0",
+                                                    "created": 1778503916147,
+                                                    "text": "预计八个"
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difuoba3hr40",
+                                            "created": 1778502939812,
+                                            "text": "点位"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difv0v97gf40",
+                                                    "created": 1778503923664,
+                                                    "text": "以龙门架导向杆为对称轴"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv1gg3xu00",
+                                                            "created": 1778503969794,
+                                                            "text": "一侧四个"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difuqcwnou00",
+                                            "created": 1778503100082,
+                                            "text": "出液方式"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difuqeiw8mw0",
+                                                    "created": 1778503103603,
+                                                    "text": "压力滴落"
+                                                },
+                                                "children": []
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difuqhooly80",
+                                                    "created": 1778503110483,
+                                                    "text": "电控滴落"
+                                                },
+                                                "children": []
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difuqs41dig0",
+                                                    "created": 1778503133180,
+                                                    "text": "幼兔自行吮吸"
+                                                },
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difuycpxdvc0",
+                            "created": 1778503726588,
+                            "text": "清洗槽"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difuyhi6jtc0",
+                                    "created": 1778503737004,
+                                    "text": "倾斜设计"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difv2mity7s0",
+                                            "created": 1778504061383,
+                                            "text": "保证清洗到所有出液滴头"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difucv5y0480",
+                            "created": 1778502042727,
+                            "text": "出水",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difupjk81vs0",
+                                    "created": 1778503036203,
+                                    "text": "水系统废液排放阀门"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difusy7x7q80",
+                                            "created": 1778503303204,
+                                            "text": "阀门规则"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difut3hzbnc0",
+                                                    "created": 1778503314696,
+                                                    "text": "喂养时"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difutq9rwc80",
+                                                            "created": 1778503364266,
+                                                            "text": "关闭"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difutml6jyo0",
+                                                    "created": 1778503356248,
+                                                    "text": "排出多余羊奶时"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difutrxc0fk0",
+                                                            "created": 1778503367867,
+                                                            "text": "开启"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difutbv5e280",
+                                                    "created": 1778503332906,
+                                                    "text": "清洁剂清洗时"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difutw45gzc0",
+                                                            "created": 1778503376986,
+                                                            "text": "开启"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difuthsene00",
+                                                    "created": 1778503345801,
+                                                    "text": "清水冲洗时"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difutxkb6sw0",
+                                                            "created": 1778503380140,
+                                                            "text": "开启"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difua2bgnz40",
+                    "created": 1778501823206,
+                    "text": "关键部件",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difudby306w0",
+                            "created": 1778502079257,
+                            "text": "压力泵",
+                            "layout": null
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "difudej0pv40",
+                            "created": 1778502084877,
+                            "text": "储液罐",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difux8vpx5c0",
+                                    "created": 1778503639867,
+                                    "text": "食品级"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difuu49uvuo0",
+                                    "created": 1778503394745,
+                                    "text": "保温"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difuu98gdiw0",
+                                    "created": 1778503405545,
+                                    "text": "耐酸/碱腐蚀"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuudg4mqo0",
+                                            "created": 1778503414716,
+                                            "text": "考虑清洁剂酸碱性"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difudkr6y2g0",
+                            "created": 1778502098431,
+                            "text": "管道",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difuv2jm8co0",
+                                    "created": 1778503469346,
+                                    "text": "管道材质"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuvfdhfhc0",
+                                            "created": 1778503497274,
+                                            "text": "主管道"
+                                        },
+                                        "children": []
+                                    },
+                                    {
+                                        "data": {
+                                            "id": "difuvhm6xwo0",
+                                            "created": 1778503502154,
+                                            "text": "笼内管道"
+                                        },
+                                        "children": []
+                                    }
+                                ]
+                            },
+                            {
+                                "data": {
+                                    "id": "difuv9ftd7k0",
+                                    "created": 1778503484354,
+                                    "text": "耐酸/碱"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difv2xbthko0",
+                                    "created": 1778504084904,
+                                    "text": "耐高温"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difuvpy9eug0",
+                            "created": 1778503520298,
+                            "text": "出液滴头"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv3ysf2mo0",
+                                    "created": 1778504166449,
+                                    "text": "形状模仿母兔乳头"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difv43c0xnk0",
+                                    "created": 1778504176341,
+                                    "text": "周围布设假毛皮"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difudhztjr40",
+                            "created": 1778502092424,
+                            "text": "电控阀门",
+                            "layout": null
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "difue1otm8g0",
+                            "created": 1778502135293,
+                            "text": "结构固定件",
+                            "layout": null
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difuaab4tco0",
+                    "created": 1778501840600,
+                    "text": "结构布局",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difue7luwhc0",
+                            "created": 1778502148175,
+                            "text": "兔笼尺寸",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difuzd80tgg0",
+                                    "created": 1778503806046,
+                                    "text": "一笼至少八只幼兔"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difuzl8g6rs0",
+                                            "created": 1778503823486,
+                                            "text": "预计尺寸"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difv09krvww0",
+                                                    "created": 1778503876474,
+                                                    "text": "长"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv0fb9hz40",
+                                                            "created": 1778503888960,
+                                                            "text": "1170mm"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difv0bawvzc0",
+                                                    "created": 1778503880232,
+                                                    "text": "宽"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv0hwxvz40",
+                                                            "created": 1778503894624,
+                                                            "text": "520mm"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "data": {
+                                                    "id": "difv0cnbdds0",
+                                                    "created": 1778503883158,
+                                                    "text": "高"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv0jso2740",
+                                                            "created": 1778503898720,
+                                                            "text": "418mm"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difue9iivrc0",
+                            "created": 1778502152327,
+                            "text": "管道开孔定位",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv4gx2qag0",
+                                    "created": 1778504205912,
+                                    "text": "兔笼宽面顶角处"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difuee065lc0",
+                            "created": 1778502162101,
+                            "text": "管道走线",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv5parvmg0",
+                                    "created": 1778504302519,
+                                    "text": "笼内主管道接多通出口"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difuetvmtyo0",
+                            "created": 1778502196655,
+                            "text": "出液口分布",
+                            "layout": null
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv6g6u1s00",
+                                    "created": 1778504361054,
+                                    "text": "龙门架为中心"
+                                },
+                                "children": [
+                                    {
+                                        "data": {
+                                            "id": "difv6xqwm4g0",
+                                            "created": 1778504399273,
+                                            "text": "一侧四个"
+                                        },
+                                        "children": [
+                                            {
+                                                "data": {
+                                                    "id": "difv70ru5uo0",
+                                                    "created": 1778504405860,
+                                                    "text": "等距设置出液口"
+                                                },
+                                                "children": [
+                                                    {
+                                                        "data": {
+                                                            "id": "difv78qy23s0",
+                                                            "created": 1778504423220,
+                                                            "text": "间距待定"
+                                                        },
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difuezjwsag0",
+                            "created": 1778502209007,
+                            "text": "废液收集",
+                            "layout": null
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difu9qbszjs0",
+                    "created": 1778501797105,
+                    "text": "控制逻辑",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difv7snhn4g0",
+                            "created": 1778504466547,
+                            "text": "待机"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difvck248sw0",
+                                    "created": 1778504839661,
+                                    "text": "阀门全关"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvcmit1200",
+                                    "created": 1778504845025,
+                                    "text": "龙门架控制兔笼内管道悬挂在兔笼顶端"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difv7unilxs0",
+                            "created": 1778504470902,
+                            "text": "喂养"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv9vy2m9s0",
+                                    "created": 1778504630445,
+                                    "text": "羊奶罐阀门开"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvabu5uvk0",
+                                    "created": 1778504665037,
+                                    "text": "龙门架控制管道下移给奶"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difv7y203l40",
+                            "created": 1778504478308,
+                            "text": "排余液"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difvaqivtuo0",
+                                    "created": 1778504697007,
+                                    "text": "羊奶阀门关"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvassfxmw0",
+                                    "created": 1778504701939,
+                                    "text": "排液阀门开"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvavz1zxc0",
+                                    "created": 1778504708869,
+                                    "text": "龙门架控制管道移出至清洗槽上"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difv822nh6g0",
+                            "created": 1778504487055,
+                            "text": "一次清洗"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difvbfhut9c0",
+                                    "created": 1778504751364,
+                                    "text": "清洁剂阀门开"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvbzdi48w0",
+                                    "created": 1778504794637,
+                                    "text": "排液阀门开"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difv87x8w8w0",
+                            "created": 1778504499788,
+                            "text": "二次清洗"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difvc5ox9g80",
+                                    "created": 1778504808388,
+                                    "text": "清洁剂阀门关"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvc9715800",
+                                    "created": 1778504816013,
+                                    "text": "清水阀门开"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difvdb95nqg0",
+                                    "created": 1778504898860,
+                                    "text": "排液阀门开"
+                                },
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difuag19diw0",
+                    "created": 1778501853064,
+                    "text": "验收标准",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difv8ggcnig0",
+                            "created": 1778504518358,
+                            "text": "阀门一致性"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "difv8jl3ejs0",
+                            "created": 1778504525175,
+                            "text": "模式切换逻辑验证"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "difv8nl4x9c0",
+                            "created": 1778504533885,
+                            "text": "水系统无异常"
+                        },
+                        "children": [
+                            {
+                                "data": {
+                                    "id": "difv8uu7ouo0",
+                                    "created": 1778504549671,
+                                    "text": "渗漏"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difv8yqz03k0",
+                                    "created": 1778504558182,
+                                    "text": "虹吸"
+                                },
+                                "children": []
+                            },
+                            {
+                                "data": {
+                                    "id": "difv904xu5c0",
+                                    "created": 1778504561203,
+                                    "text": "液体分配不均"
+                                },
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "data": {
+                            "id": "difv97041uo0",
+                            "created": 1778504576149,
+                            "text": "清洁效果验证"
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "difv9brasvk0",
+                            "created": 1778504586500,
+                            "text": "幼兔实测观察"
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "difuam295kg0",
+                    "created": 1778501866185,
+                    "text": "待解决问题",
+                    "layout": null
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "difv9k4t7mw0",
+                            "created": 1778504604731,
+                            "text": "实测后获得问题(暂无）"
+                        },
+                        "children": []
+                    }
+                ]
+            }
+        ]
+    },
+    "template": "default",
+    "theme": "fresh-blue",
+    "version": "1.4.43"
+}

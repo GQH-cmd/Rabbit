@@ -1,0 +1,204 @@
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=14 m1_rpm=0
+CUR m0_iq_x100=0 m1_iq_x100=1 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=16 m1_rpm=-1
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=4 m1_rpm=1
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-14 m1_rpm=0
+CUR m0_iq_x100=1 m1_iq_x100=1 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-2 m1_rpm=-143
+CUR m0_iq_x100=0 m1_iq_x100=-1 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-1 m1_rpm=3
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=20
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-1 m1_rpm=4
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=2 m1_rpm=0
+CUR m0_iq_x100=1 m1_iq_x100=1 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=0
+CUR m0_iq_x100=0 m1_iq_x100=-1 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-14 m1_rpm=1
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-3 m1_rpm=-33
+CUR m0_iq_x100=0 m1_iq_x100=0 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-2 m1_rpm=-13
+o0,o1.5
+
+CUR m0_iq_x100=0 m1_iq_x100=24 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=3 m1_rpm=78
+CUR m0_iq_x100=1 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=31 m1_rpm=179
+CUR m0_iq_x100=0 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=1 m1_rpm=152
+CUR m0_iq_x100=0 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=5 m1_rpm=167
+CUR m0_iq_x100=1 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=2 m1_rpm=162
+CUR m0_iq_x100=1 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=7 m1_rpm=150
+CUR m0_iq_x100=1 m1_iq_x100=22 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-28 m1_rpm=188
+CUR m0_iq_x100=0 m1_iq_x100=22 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=174
+CUR m0_iq_x100=0 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=11 m1_rpm=114
+CUR m0_iq_x100=0 m1_iq_x100=12 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-8 m1_rpm=121
+CUR m0_iq_x100=0 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=6 m1_rpm=126
+CUR m0_iq_x100=1 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-1 m1_rpm=128
+CUR m0_iq_x100=0 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=42 m1_rpm=116
+CUR m0_iq_x100=0 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-3 m1_rpm=130
+CUR m0_iq_x100=1 m1_iq_x100=25 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=3 m1_rpm=73
+CUR m0_iq_x100=0 m1_iq_x100=24 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=70
+CUR m0_iq_x100=0 m1_iq_x100=21 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=122
+CUR m0_iq_x100=0 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=49
+CUR m0_iq_x100=0 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=2 m1_rpm=37
+CUR m0_iq_x100=0 m1_iq_x100=21 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=15 m1_rpm=1
+CUR m0_iq_x100=1 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-6 m1_rpm=29
+CUR m0_iq_x100=1 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=45 m1_rpm=0
+CUR m0_iq_x100=-1 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-13 m1_rpm=123
+CUR m0_iq_x100=-1 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=1 m1_rpm=101
+CUR m0_iq_x100=0 m1_iq_x100=24 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-15 m1_rpm=55
+CUR m0_iq_x100=1 m1_iq_x100=21 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=6 m1_rpm=175
+CUR m0_iq_x100=0 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-14 m1_rpm=77
+CUR m0_iq_x100=0 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=119
+CUR m0_iq_x100=0 m1_iq_x100=21 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=4 m1_rpm=156
+CUR m0_iq_x100=0 m1_iq_x100=24 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-2 m1_rpm=121
+CUR m0_iq_x100=0 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-1 m1_rpm=169
+CUR m0_iq_x100=0 m1_iq_x100=14 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=25 m1_rpm=154
+CUR m0_iq_x100=0 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-3 m1_rpm=163
+CUR m0_iq_x100=0 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=1 m1_rpm=159
+CUR m0_iq_x100=0 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=10 m1_rpm=151
+CUR m0_iq_x100=0 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=4 m1_rpm=141
+CUR m0_iq_x100=-1 m1_iq_x100=26 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=1 m1_rpm=103
+CUR m0_iq_x100=0 m1_iq_x100=21 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=21 m1_rpm=177
+CUR m0_iq_x100=0 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=4 m1_rpm=166
+CUR m0_iq_x100=1 m1_iq_x100=14 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-3 m1_rpm=139
+CUR m0_iq_x100=0 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=21 m1_rpm=167
+CUR m0_iq_x100=1 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-4 m1_rpm=114
+CUR m0_iq_x100=0 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-6 m1_rpm=74
+CUR m0_iq_x100=0 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=5 m1_rpm=159
+CUR m0_iq_x100=2 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=-7 m1_rpm=127
+CUR m0_iq_x100=-1 m1_iq_x100=12 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=1 m1_rpm=128
+CUR m0_iq_x100=-1 m1_iq_x100=13 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=13 m1_rpm=84
+o1,o1.5
+
+CUR m0_iq_x100=2 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=141 m1_rpm=106
+CUR m0_iq_x100=4 m1_iq_x100=26 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=165 m1_rpm=165
+CUR m0_iq_x100=6 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=140 m1_rpm=65
+CUR m0_iq_x100=3 m1_iq_x100=13 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=72 m1_rpm=110
+CUR m0_iq_x100=3 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=71 m1_rpm=133
+CUR m0_iq_x100=2 m1_iq_x100=22 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=152 m1_rpm=138
+CUR m0_iq_x100=4 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=144 m1_rpm=151
+CUR m0_iq_x100=4 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=144 m1_rpm=156
+CUR m0_iq_x100=5 m1_iq_x100=26 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=147 m1_rpm=158
+CUR m0_iq_x100=6 m1_iq_x100=14 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=109 m1_rpm=156
+CUR m0_iq_x100=11 m1_iq_x100=12 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=0 m1_rpm=122
+CUR m0_iq_x100=8 m1_iq_x100=13 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=21 m1_rpm=68
+CUR m0_iq_x100=5 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=56 m1_rpm=160
+CUR m0_iq_x100=10 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=28 m1_rpm=164
+CUR m0_iq_x100=5 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=132 m1_rpm=80
+CUR m0_iq_x100=4 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=138 m1_rpm=157
+CUR m0_iq_x100=4 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=140 m1_rpm=175
+CUR m0_iq_x100=4 m1_iq_x100=12 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=149 m1_rpm=165
+CUR m0_iq_x100=4 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=89 m1_rpm=115
+CUR m0_iq_x100=6 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=80 m1_rpm=127
+CUR m0_iq_x100=2 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=150 m1_rpm=169
+CUR m0_iq_x100=4 m1_iq_x100=19 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=147 m1_rpm=155
+CUR m0_iq_x100=7 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=146 m1_rpm=169
+CUR m0_iq_x100=2 m1_iq_x100=16 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=114 m1_rpm=103
+CUR m0_iq_x100=2 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=62 m1_rpm=121
+CUR m0_iq_x100=4 m1_iq_x100=22 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=141 m1_rpm=158
+CUR m0_iq_x100=3 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=137 m1_rpm=76
+CUR m0_iq_x100=3 m1_iq_x100=13 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=143 m1_rpm=158
+CUR m0_iq_x100=4 m1_iq_x100=14 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=142 m1_rpm=88
+CUR m0_iq_x100=3 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=138 m1_rpm=147
+CUR m0_iq_x100=3 m1_iq_x100=24 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=147 m1_rpm=167
+CUR m0_iq_x100=4 m1_iq_x100=23 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=156 m1_rpm=149
+CUR m0_iq_x100=4 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=144 m1_rpm=75
+CUR m0_iq_x100=3 m1_iq_x100=17 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=131 m1_rpm=96
+CUR m0_iq_x100=3 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=146 m1_rpm=143
+CUR m0_iq_x100=4 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=126 m1_rpm=78
+CUR m0_iq_x100=6 m1_iq_x100=20 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=155 m1_rpm=172
+CUR m0_iq_x100=1 m1_iq_x100=18 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=149 m1_rpm=153
+CUR m0_iq_x100=2 m1_iq_x100=15 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=163 m1_rpm=160
+CUR m0_iq_x100=3 m1_iq_x100=14 m0_mode=0 m1_mode=0 contact=0
+VEL m0_rpm=76 m1_rpm=132
