@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>兔子谱系识别系统</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <base target="_blank">
+</head>
+<body>
+<div class="app">
+
+    <header class="header">
+        <h1>兔子养殖中心谱系识别系统</h1>
+        <p>用于录入兔子信息、递归查询谱系、筛选纯种</p>
+    </header>
+
+    <!-- 新增兔子模块 -->
+    <section class="panel">
+        <h2>新增兔子信息</h2>
+        <div class="form-grid">
+            <input id="RabbitID" placeholder="编号">
+            <select id="Gender">
+                <option value="">性别</option>
+                <option value="Male">公兔</option>
+                <option value="Female">母兔</option>
+            </select>
+            <input id="BirthDate" type="date" placeholder="出生日期">
+            <input id="Bloodline" placeholder="血统">
+            <input
+                id="FatherID"
+                list="maleRabbitList"
+                placeholder="父亲 ID（可搜索）">
+
+            <input
+                id="MotherID"
+                list="femaleRabbitList"
+                placeholder="母亲 ID（可搜索）">
+            <input id="Home" placeholder="舍">
+            <input id="Status" placeholder="状态">
+            <input id="Source" placeholder="来源">
+            <input id="Parity" type="number" min="1" placeholder="胎次">
+            <input id="LitterSize" type="number" min="1" placeholder="同窝仔数">
+            <input id="InbreedingCoeff"  placeholder="近交系数（自动计算）" readonly>
+        </div>
+        <button onclick="addRabbit()">添加兔子</button>
+    </section>
+
+    <!-- 兔子列表 -->
+    <section class="panel">
+        <h2>兔子列表</h2>
+        <button onclick="loadRabbits()">刷新列表</button>
+        <div class="status-tabs">
+            <button
+                id="activeTab"
+                class="status-tab active"
+                onclick="changeRabbitView('active')">
+                在养
+            </button>
+
+            <button
+                id="deadTab"
+                class="status-tab"
+                onclick="changeRabbitView('dead')">
+                死亡
+            </button>
+
+            <button
+                id="allTab"
+                class="status-tab"
+                onclick="changeRabbitView('all')">
+                全部
+            </button>
+        </div>
+
+        <div class="table-controls" style="margin:10px 0;">
+            <input id="searchInput" placeholder="搜索 编号/血统">
+            <button onclick="searchRabbits()">搜索</button>
+            跳转到第 <input id="jumpPageInput" type="number" min="1" style="width:50px;">
+            页 <button onclick="jumpPage()">跳转</button>
+        </div>
+        <div class="table-wrapper">
+            <table id="rabbitTable">
+                <thead>
+                    <tr>
+                        <th>编号</th><th>性别</th><th>出生日期</th><th>年龄</th>
+                        <th>血统</th><th>舍</th><th>状态</th><th>来源</th><th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- JS 渲染 -->
+                </tbody>
+            </table>
+        </div>
+        <div id="pagination" style="margin-top: 10px;"></div>
+    </section>
+
+
+    <section class="panel">
+
+        <h2>配种辅助检查</h2>
+        <p class="section-hint">
+            选择公兔和母兔，系统将根据已有谱系计算预计后代近交系数。
+        </p>
+
+        <div class="mating-form">
+    
+            <input
+                id="matingFatherID"
+                list="maleRabbitList"
+                placeholder="选择公兔 ID">
+
+            <span class="mating-cross">×</span>
+
+            <input
+                id="matingMotherID"
+                list="femaleRabbitList"
+                placeholder="选择母兔 ID">
+
+            <button onclick="runMatingCheck()">
+                开始检查
+            </button>
+
+        </div>
+
+        <div
+            id="matingCheckResult"
+            class="mating-result">
+        </div>
+
+    </section>
+
+    
+    <!-- 谱系查询 -->
+    <section class="panel">
+        <h2>谱系查询</h2>
+        <div class="query-row">
+            <input id="queryRabbitID" placeholder="RabbitID">
+            <input id="lineageDepth" type="number" min="1" value="3">
+            <button onclick="queryLineage()">查询谱系</button>
+        </div>
+        <div id="lineageResult" class="lineage-box"></div>
+    </section>
+
+    <!-- 纯种筛选 -->
+    <section class="panel">
+        <h2>纯种兔子筛选</h2>
+        <div class="query-row">
+            <input id="pureDepth" type="number" min="1" value="2">
+            <input id="pureBloodline" placeholder="血统筛选，可空">
+            <button onclick="queryPurebred()">筛选纯种</button>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>RabbitID</th>
+                        <th>Gender</th>
+                        <th>BirthDate</th>
+                        <th>年龄</th>
+                        <th>Bloodline</th>
+                        <th>FatherID</th>
+                        <th>MotherID</th>
+                        <th>Home</th>
+                    </tr>
+                </thead>
+                <tbody id="pureTable"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <datalist id="maleRabbitList"></datalist>
+    <datalist id="femaleRabbitList"></datalist>
+
+</div>
+
+
+    <!-- 编辑弹窗 -->
+    <div id="editModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h3>编辑兔子信息</h3>
+            <div class="form-grid">
+                <input id="editRabbitID" placeholder="编号" disabled>
+                <select id="editGender">
+                    <option value="Male">公兔</option>
+                    <option value="Female">母兔</option>
+                </select>
+                <input id="editBirthDate" type="date">
+                <input id="editBloodline" placeholder="血统">
+                <input
+                    id="editFatherID"
+                    list="maleRabbitList"
+                    placeholder="父兔 ID">
+                <input
+                    id="editMotherID"
+                    list="femaleRabbitList"
+                    placeholder="母兔 ID">
+                <input id="editHome" placeholder="舍">
+                <input id="editStatus" placeholder="状态">
+                <input id="editSource" placeholder="来源">
+            </div>
+            <div class="modal-actions">
+                <button onclick="saveEdit()">保存修改</button>
+                <button class="cancel-btn" onclick="closeEditModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script src="/static/main.js"></script>
+</body>
+<!-- 兔子主页弹窗 -->
+<div id="rabbitPageModal" class="modal" style="display:none; align-items:center; justify-content:center;">
+    <!-- 弹窗内容由 JS 动态生成 -->
+</div>
+<div id="quickAddModal" class="modal">
+
+  <div class="modal-content">
+
+    <h2>🐰 耳标录入</h2>
+
+    <!-- 基础 -->
+    <div class="scan-row">
+
+      <input
+        id="quickRabbitID"
+        placeholder="请扫描耳标"
+      >
+
+
+    </div> 
+    <select id="quickGender">
+      <option value="Male">公兔</option>
+      <option value="Female">母兔</option>
+    </select>
+
+    <input id="quickBirthDate" type="date">
+
+    <hr>
+
+    <!-- 亲代 -->
+    <input
+        id="quickFatherID"
+        list="maleRabbitList"
+        placeholder="父亲 ID（可搜索）">
+
+    <input
+        id="quickMotherID"
+        list="femaleRabbitList"
+        placeholder="母亲 ID（可搜索）">
+
+    <hr>
+
+    <!-- 批次 -->
+    <input id="quickBloodline" placeholder="血统">
+    <input id="quickParity" type="number" placeholder="胎次">
+    <input id="quickLitterSize" type="number" placeholder="同窝数">
+    <input id="quickInbreedingCoeff"
+           placeholder="近交系数（自动计算）"
+           readonly>
+
+    <div id="quickMatingResult"
+         style="margin:8px 0; font-size:14px;">
+    </div>
+
+    <hr>
+
+    <!-- 管理 -->
+    <input id="quickHome" placeholder="笼舍">
+
+    <select id="quickStatus">
+      <option value="alive">存活</option>
+      <option value="sold">已售</option>
+      <option value="dead">死亡</option>
+    </select>
+
+    <input id="quickSource" value="耳标录入" readonly>
+
+    <button id="quickSubmitBtn">提交</button>
+    <button onclick="closeQuickAddModal()">取消</button>
+
+
+
+  </div>
+</div>
+</html>

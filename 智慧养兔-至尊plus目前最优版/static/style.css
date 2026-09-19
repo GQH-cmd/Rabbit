@@ -1,0 +1,196 @@
+body { font-family:"Microsoft YaHei",Arial,sans-serif; background:#f5f7fb; margin:0; color:#222; }
+.app { max-width:1200px; margin:0 auto; padding:24px; }
+.header { background:#1f7a4d; color:white; padding:28px; border-radius:18px; margin-bottom:24px; }
+.header h1 { margin:0 0 10px; font-size:30px; }
+.header p { margin:0; opacity:0.9; }
+.panel { background:white; border-radius:16px; padding:22px; margin-bottom:24px; box-shadow:0 8px 24px rgba(0,0,0,0.08);}
+.panel h2 { margin-top:0; font-size:21px; border-left:5px solid #1f7a4d; padding-left:12px;}
+.form-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px;}
+.query-row { display:flex; gap:12px; margin-bottom:16px;}
+input, select { height:42px; border:1px solid #d6dbe6; border-radius:10px; padding:0 12px; font-size:14px; }
+input:focus, select:focus { outline:none; border-color:#1f7a4d; box-shadow:0 0 0 3px rgba(31,122,77,0.15);}
+button { height:42px; padding:0 18px; border:none; border-radius:10px; background:#1f7a4d; color:white; font-size:14px; cursor:pointer;}
+button:hover { background:#17613c; }
+.table-wrapper { overflow-x:auto; margin-top:14px; }
+table { width:100%; border-collapse:collapse; min-width:1000px; }
+th,td { border-bottom:1px solid #e5e8ef; padding:10px; text-align:center; font-size:14px; }
+th { background:#f0f5f2; font-weight:700; position:sticky; top:0; z-index:2; }
+tr:hover { background:#f8fbf9; }
+.lineage-box { background:#f8fafc; border:1px solid #e1e6ef; border-radius:12px; padding:16px; min-height:80px; white-space:pre-wrap; font-family:Consolas, monospace; }
+.node { margin-left:20px; line-height:1.8; }
+.node-title { font-weight:bold; color:#1f7a4d; }
+.delete-btn { background:#d9534f; }
+.delete-btn:hover { background:#b63d39; }
+
+/* 操作按钮 */
+.delete-btn { background:#d9534f; width:60px; }
+.delete-btn:hover { background:#b63d39; }
+.edit-btn { background:#f0ad4e; width:60px; margin-right:6px; }
+.edit-btn:hover { background:#ec971f; }
+
+/* 弹窗 */
+.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal-content { background:white; padding:28px; border-radius:16px; width:90%; max-width:700px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.modal-content h3 { margin-top:0; font-size:20px; border-left:5px solid #1f7a4d; padding-left:12px; }
+.modal-actions { display:flex; gap:12px; justify-content:flex-end; margin-top:16px; }
+.cancel-btn { background:#6c757d; }
+.cancel-btn:hover { background:#5a6268; }
+
+/* 兔子主页弹窗 */
+#rabbitPageModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none; /* JS 控制显示 */
+    z-index: 1000;
+    overflow-y: auto;
+}
+
+#rabbitPageModal .modal-content {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    margin: 40px auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+#rabbitPageModal .modal-content h3 {
+    margin-top: 0;
+    font-size: 18px;
+    border-left: 5px solid #1f7a4d;
+    padding-left: 12px;
+    margin-bottom: 12px;
+}
+
+#rabbitPageModal .modal-content p {
+    margin: 6px 0;
+}
+
+#rabbitPageModal .modal-content button {
+    margin-top: 12px;
+    background: #1f7a4d;
+    color: white;
+    border-radius: 10px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border: none;
+}
+
+#rabbitPageModal .modal-content button:hover {
+    background: #17613c;
+}
+
+
+.modal {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.4);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  max-height: 90%;
+  overflow-y: auto;
+}
+
+.rabbit-link {
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.action-cell {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.death-btn {
+    background: #e67e22;
+}
+
+.death-btn:hover {
+    background: #cf6d17;
+}
+
+.delete-btn {
+    background: #d9534f;
+}
+
+.delete-btn:hover {
+    background: #b63d39;
+}
+
+.status-tabs {
+    display: inline-flex;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.status-tab {
+    background: #e9ecef;
+    color: #333;
+}
+
+.status-tab.active {
+    background: #1f7a4d;
+    color: white;
+}
+
+.dead-label {
+    color: #888;
+    font-weight: 600;
+}
+
+.section-hint {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.mating-form {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.mating-form input {
+    min-width: 220px;
+}
+
+.mating-cross {
+    font-size: 22px;
+    font-weight: bold;
+    color: #888;
+}
+
+.mating-result {
+    margin-top: 18px;
+    padding: 16px;
+    border-radius: 12px;
+    background: #f8faf9;
+    border: 1px solid #dce9e2;
+    line-height: 1.9;
+    min-height: 20px;
+}
+
+.mating-error {
+    color: #d9534f;
+}
