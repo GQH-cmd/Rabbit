@@ -42,22 +42,14 @@ public class RfidManager {
         try {
             mApi = new CommonApi();
 
-            // ======== 低频 RFID 模块 GPIO 上电（来自低功耗 Demo）========
-            // 引脚 13
-            mApi.setGpioMode(13, 0);      // 设置模式
-            mApi.setGpioDir(13, 1);       // 输出方向
-            mApi.setGpioOut(13, 1);       // 高电平
+            // GPIO 上电（来自厂商 Demo）
+            //mApi.setGpioDir(64, 1);
+            //mApi.setGpioOut(64, 0);
+            //mApi.setGpioDir(86, 1);
+            //mApi.setGpioOut(86, 1);
 
-            // 引脚 15
-            mApi.setGpioMode(15, 0);
-            mApi.setGpioDir(15, 1);
-            mApi.setGpioOut(15, 1);
+            try { Thread.sleep(100); } catch (InterruptedException e) { e.printStackTrace(); }
 
-            // 等待模块稳定（Demo 中 postDelayed 了 1000ms，我们这里用 500ms 足够）
-            try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); }
-            // =============================================================
-
-            // 打开串口
             mComFd = mApi.openComEx(COM_PORT, BAUD_RATE, DATA_BITS, PARITY, STOP_BITS, 2);
             if (mComFd > 0) {
                 mIsOpen = true;

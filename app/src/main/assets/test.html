@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID 桥接测试</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        button { font-size: 20px; padding: 10px 20px; margin: 10px; }
+        #result { font-size: 18px; margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+<h2>RFID 桥接测试</h2>
+<button onclick="doScan()">扫描耳标</button>
+<button onclick="stopScan()">停止扫描</button>
+<button onclick="showStatus()">查看状态</button>
+<div id="result">等待操作...</div>
+
+<script>
+    // 单次扫描
+    function doScan() {
+        document.getElementById('result').innerText = '正在扫描，请靠近耳标...';
+        try {
+            window.RfidBridge.scan('onScanResult');
+        } catch (e) {
+            document.getElementById('result').innerText = '调用失败: ' + e.message;
+        }
+    }
+
+    // 停止扫描
+    function stopScan() {
+        window.RfidBridge.stopScan();
+        document.getElementById('result').innerText = '已停止扫描';
+    }
+
+    // 获取状态
+    function showStatus() {
+        var status = window.RfidBridge.getStatus();
+        document.getElementById('result').innerText = '状态: ' + status;
+    }
+
+    // 扫描结果回调（由 Java 调用）
+    function onScanResult(id, error) {
+        if (error) {
+            document.getElementById('result').innerText = '扫描失败: ' + error;
+        } else if (id) {
+            document.getElementById('result').innerText = '耳标ID: ' + id;
+        } else {
+            document.getElementById('result').innerText = '未扫描到耳标';
+        }
+    }
+</script>
+</body>
+</html>
