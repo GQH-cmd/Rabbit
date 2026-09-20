@@ -42,6 +42,8 @@
 #include "Filter.h"
 #include "led.h"
 #include "ContactDetect.h"
+#include <string.h>
+#include "FocLinkProtocol.h"
 
 /* USER CODE END Includes */
 
@@ -53,10 +55,8 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 // 定义编码器类型
-#define ENCODER_AS5600   0
-#define ENCODER_AS5047   1
 #define CONTACT_DETECT_DELTA_CURRENT       0.30f
-#define CONTACT_DETECT_SAMPLE_PERIOD_MS    500U
+#define CONTACT_DETECT_SAMPLE_PERIOD_MS    100U
 #define CONTACT_DETECT_HOLD_TIME_MS        50U
 #define CONTACT_DETECT_STARTUP_IGNORE_MS   1000U
 #define CONTACT_DETECT_TREND_SAMPLES       10U
@@ -66,6 +66,8 @@
 #define CONTACT_DETECT_MIN_OPEN_TARGET     0.10f
 #define CONTACT_DETECT_MIN_CURRENT_TARGET  0.05f
 #define CONTACT_DETECT_MIN_SPEED_TARGET    5.0f
+#ifdef ESP32_SPI_LINK
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -79,6 +81,11 @@ struct MovingAverageFilter temp2_avg_filter;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+static void App_BootMarker(const char *text)
+{
+	HAL_UART_Transmit(&huart1, (uint8_t *)text, (uint16_t)strlen(text), 100U);
+}
+
 uint16_t Pre_d, Comp_d, Duty;
 uint16_t TFT_ADC_value; 			// TFT屏幕的ADC转换值
 float32_t TFT_Real_value; 			// TFT滑动变阻器实际电压值
@@ -101,6 +108,36 @@ uint8_t S1_Angle = 0;
 
 uint8_t rx_buffer[50];				// 串口缓存
 uint8_t rx_len;						// 串口数据长度
+
+/* USB1/USART1 command receiver.  Use one-byte interrupt reception so XCOM
+ * commands are handled independently of the SPI3 link and DMA idle state. */
+extern uint8_t USART1_RxByte;
+#define UART1_FRAME_SIZE 50U
+static uint8_t UART1_BuildBuffer[UART1_FRAME_SIZE];
+static uint8_t UART1_FrameBuffer[UART1_FRAME_SIZE];
+static volatile uint8_t UART1_BuildLength = 0U;
+static volatile uint8_t UART1_FrameLength = 0U;
+static volatile uint8_t UART1_FrameReady = 0U;
+
+// USART2 无线模块接收缓存：一行命令以 '\n' 结束，例如 o0.2,o0\n
+#define UART2_FRAME_SIZE 50U
+static uint8_t UART2_RxByte;
+static uint8_t UART2_BuildBuffer[UART2_FRAME_SIZE];
+static uint8_t UART2_FrameBuffer[UART2_FRAME_SIZE];
+static volatile uint8_t UART2_BuildLength = 0U;
+static volatile uint8_t UART2_FrameLength = 0U;
+static volatile uint8_t UART2_FrameReady = 0U;
+
+#ifdef ESP32_SPI_LINK
+/* 双向缓冲只在主循环重装；中断只标记完成，不覆盖待处理命令。 */
+static uint8_t SPI3_LinkRxFrame[FLP_SIZE];
+static uint8_t SPI3_LinkTxFrame[FLP_SIZE];
+static volatile uint8_t SPI3_LinkFrameReady = 0U;
+static volatile uint8_t SPI3_LinkError = 0U;
+static uint8_t SPI3_LinkArmed = 0U, SPI3_LinkOwned = 0U;
+static uint32_t SPI3_LinkLastAlive = 0U;
+static FlpStatus SPI3_LinkStatus;
+#endif
 
 // 编码器选择变量
 uint8_t M0_EncoderType = ENCODER_AS5600;  // 默认使用AS5600
@@ -140,6 +177,178 @@ static float32_t App_Abs(float32_t value)
 	return (value < 0.0f) ? -value : value;
 }
 
+static void App_USART1_CommandTask(void)
+{
+	uint8_t local_frame[UART1_FRAME_SIZE];
+	uint8_t local_length;
+	static const uint8_t ack[] = "ACK\r\n";
+
+	if (UART1_FrameReady == 0U)
+	{
+		return;
+	}
+
+	__disable_irq();
+	local_length = UART1_FrameLength;
+	memcpy(local_frame, UART1_FrameBuffer, local_length);
+	UART1_FrameReady = 0U;
+	__enable_irq();
+
+	if (local_length > 0U)
+	{
+		uint8_t accepted = Parse_Command(local_frame, local_length);
+#ifdef ESP32_SPI_LINK
+        if (accepted) SPI3_LinkOwned = 0U;
+#endif
+        if (accepted) HAL_UART_Transmit(&huart1, (uint8_t *)ack, sizeof(ack) - 1U, 20U);
+        else HAL_UART_Transmit(&huart1, (uint8_t *)"NACK\r\n", 6U, 20U);
+	}
+}
+
+static void App_USART2_CommandTask(void)
+{
+	uint8_t local_frame[UART2_FRAME_SIZE];
+	uint8_t local_length;
+	static const uint8_t ack[] = "ACK\r\n";
+
+	if (UART2_FrameReady == 0U)
+	{
+		return;
+	}
+
+	/* 暂停极短时间，避免主循环复制时被接收中断改写 */
+	__disable_irq();
+	local_length = UART2_FrameLength;
+	memcpy(local_frame, UART2_FrameBuffer, local_length);
+	UART2_FrameReady = 0U;
+	__enable_irq();
+
+	if (local_length > 0U)
+	{
+		/* 复用现有的 o/c/v/p 双电机命令解析器 */
+		uint8_t accepted = Parse_Command(local_frame, local_length);
+#ifdef ESP32_SPI_LINK
+        if (accepted) SPI3_LinkOwned = 0U;
+#endif
+        if (accepted) HAL_UART_Transmit(&huart2, (uint8_t *)ack, sizeof(ack) - 1U, 20U);
+        else HAL_UART_Transmit(&huart2, (uint8_t *)"NACK\r\n", 6U, 20U);
+	}
+}
+
+#ifdef ESP32_SPI_LINK
+/* 有符号遥测：转速单位 0.01 RPM，iq 单位 0.001 A；异常数值不强转溢出。 */
+static int32_t App_LinkScale(float value, float scale)
+{
+    float v = value * scale;
+    if (!isfinite(v) || v > 2147483000.0f || v < -2147483000.0f)
+    {
+        SPI3_LinkStatus.faults |= FLP_FAULT_VALUE;
+        return 0;
+    }
+    return (int32_t)v;
+}
+
+static void App_SPI3_Stop(void)
+{
+    uint8_t stop[] = "o0,o0";
+    (void)Parse_Command(stop, 5U);
+    SPI3_LinkOwned = 0U;
+}
+
+static void App_SPI3_Snapshot(void)
+{
+    FlpStatus *s = &SPI3_LinkStatus;
+    s->flags = FLP_READY | (s->id ? FLP_ACK : 0U);
+    if (M0_EncoderType != ENCODER_DISABLED) s->flags |= FLP_ENCODER0;
+    if (M1_EncoderType != ENCODER_DISABLED) s->flags |= FLP_ENCODER1;
+    if (M0_ContactDetected) s->flags |= FLP_CONTACT0;
+    if (M1_ContactDetected) s->flags |= FLP_CONTACT1;
+    if (SPI3_LinkOwned) s->flags |= FLP_SPI_OWNER;
+    /* 这里只表示编码器配置已启用，不冒充编码器硬件健康证明。 */
+    float v0 = (M0_EncoderType == ENCODER_AS5600) ? Sensor0.velocity : Sensor2.velocity;
+    float v1 = (M1_EncoderType == ENCODER_AS5600) ? Sensor1.velocity : Sensor3.velocity;
+    s->rpm0 = (s->flags & FLP_ENCODER0) ? App_LinkScale(v0, 6000.0f / (2.0f * PI)) : 0;
+    s->rpm1 = (s->flags & FLP_ENCODER1) ? App_LinkScale(v1, 6000.0f / (2.0f * PI)) : 0;
+    s->iq0 = App_LinkScale(M0_Curs.iq, 1000.0f);
+    s->iq1 = App_LinkScale(M1_Curs.iq, 1000.0f);
+    s->mode0 = (uint8_t)M0.mode;s->mode1 = (uint8_t)M1.mode;
+    s->uptime = HAL_GetTick();++s->sample;
+    flp_reply(SPI3_LinkTxFrame, s);
+}
+
+static void App_SPI3_Arm(void)
+{
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15) == GPIO_PIN_RESET) return;
+    /* 仅片选为高时复位 SPI3 外设，清除短帧/溢出/上一帧移位器残留。
+     * 不改 GPIO 复用、不操作 SPI1/SPI2，不在 ISR 内阻塞等候。 */
+    HAL_NVIC_DisableIRQ(SPI3_IRQn);
+    __HAL_RCC_SPI3_FORCE_RESET();
+    __HAL_RCC_SPI3_RELEASE_RESET();
+    hspi3.State = HAL_SPI_STATE_READY;
+    hspi3.Lock = HAL_UNLOCKED;
+    SPI3_LinkFrameReady = 0U;SPI3_LinkError = 0U;
+    if (HAL_SPI_Init(&hspi3) != HAL_OK) { SPI3_LinkArmed = 0U; }
+    else {
+        App_SPI3_Snapshot();
+        SPI3_LinkArmed = (HAL_SPI_TransmitReceive_IT(&hspi3, SPI3_LinkTxFrame,
+                               SPI3_LinkRxFrame, FLP_SIZE) == HAL_OK);
+    }
+    HAL_NVIC_ClearPendingIRQ(SPI3_IRQn);
+    HAL_NVIC_EnableIRQ(SPI3_IRQn);
+}
+
+static void App_SPI3_Process(const uint8_t *frame)
+{
+    FlpRequest q;
+    if (!flp_read_request(frame, &q)) {
+        ++SPI3_LinkStatus.badFrames;SPI3_LinkStatus.faults |= FLP_FAULT_FRAME;return;
+    }
+    if (q.kind == FLP_POLL) {
+        if (SPI3_LinkOwned) {
+            if (q.keepalive) SPI3_LinkLastAlive = HAL_GetTick();
+            else App_SPI3_Stop();
+        }
+        return;
+    }
+    /* 同一命令编号仅执行一次；POLL 不覆盖最近命令回执。 */
+    if (SPI3_LinkStatus.id == q.id) return;
+    SPI3_LinkStatus.id = q.id;
+    if (!strcmp(q.text, "PING")) SPI3_LinkStatus.result = FLP_PONG;
+    else if (Parse_Command((uint8_t *)q.text, (uint8_t)strlen(q.text))) {
+        SPI3_LinkStatus.result = FLP_ACCEPTED;
+        SPI3_LinkOwned = !(M0.mode == MODE_OPEN && M1.mode == MODE_OPEN &&
+                          M0.param.Ope == 0.0f && M1.param.Ope == 0.0f);
+        SPI3_LinkLastAlive = HAL_GetTick();
+    } else {
+        SPI3_LinkStatus.result = FLP_BAD_COMMAND;++SPI3_LinkStatus.badFrames;
+    }
+    printf("SPI3 ACK id=%lu result=%u\r\n", (unsigned long)q.id, SPI3_LinkStatus.result);
+}
+
+static void App_SPI3_CommandTask(void)
+{
+    /* 只监管 SPI 接管的运动；XCOM 有效命令接管后不受此看门狗影响。 */
+    if (SPI3_LinkOwned && (HAL_GetTick() - SPI3_LinkLastAlive >= FLP_WATCHDOG_MS)) {
+        App_SPI3_Stop();SPI3_LinkStatus.faults |= FLP_FAULT_WATCHDOG;
+        printf("SPI3 WATCHDOG STOP\r\n");
+    }
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_15) == GPIO_PIN_RESET) return;
+    if (SPI3_LinkError) {
+        ++SPI3_LinkStatus.badFrames;SPI3_LinkStatus.faults |= FLP_FAULT_TRANSPORT;
+        App_SPI3_Arm();
+    } else if (SPI3_LinkFrameReady) {
+        /* 当前缓冲不再重装，主循环处理期间不会被下一帧覆盖。 */
+        if (__HAL_SPI_GET_FLAG(&hspi3, SPI_FLAG_RXNE) || __HAL_SPI_GET_FLAG(&hspi3, SPI_FLAG_OVR)) {
+            ++SPI3_LinkStatus.badFrames;SPI3_LinkStatus.faults |= FLP_FAULT_TRANSPORT;
+        } else App_SPI3_Process(SPI3_LinkRxFrame);
+        App_SPI3_Arm();
+    } else if (!SPI3_LinkArmed || (hspi3.RxXferCount > 0U && hspi3.RxXferCount < FLP_SIZE)) {
+        if (SPI3_LinkArmed) {++SPI3_LinkStatus.badFrames;SPI3_LinkStatus.faults |= FLP_FAULT_TRANSPORT;}
+        App_SPI3_Arm();
+    }
+}
+#endif
+
 static int32_t App_Scale100(float32_t value)
 {
 	return (int32_t)(value * 100.0f);
@@ -158,6 +367,10 @@ static float32_t M0_GetSpeedAbs(void)
 
 static float32_t M1_GetSpeedAbs(void)
 {
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		return 0.0f;
+	}
 	float32_t velocity = (M1_EncoderType == ENCODER_AS5600) ? Sensor1.velocity : Sensor3.velocity;
 	return App_Abs(velocity);
 }
@@ -206,6 +419,10 @@ static uint8_t M1_SpeedIsBelowStopRpm(void)
 
 static uint8_t M0_IsRunningCommand(void)
 {
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		return 0U;
+	}
 	if (M0.mode == MODE_OPEN)
 	{
 		return App_Abs(M0.param.Ope) > CONTACT_DETECT_MIN_OPEN_TARGET;
@@ -227,6 +444,10 @@ static uint8_t M0_IsRunningCommand(void)
 
 static uint8_t M1_IsRunningCommand(void)
 {
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		return 0U;
+	}
 	if (M1.mode == MODE_OPEN)
 	{
 		return App_Abs(M1.param.Ope) > CONTACT_DETECT_MIN_OPEN_TARGET;
@@ -315,6 +536,8 @@ static void M0_ContactDetect_Task(void)
 		return;
 	}
 
+	/* Existing project behavior: a commanded motor whose measured speed stays
+	 * below 65 RPM is treated as contact and both motors are stopped. */
 	if ((M0_ContactDetected == 0U) && (M0_SpeedIsBelowStopRpm() != 0U))
 	{
 		M0_ContactDetected = 1U;
@@ -387,7 +610,7 @@ static void App_StatusPrint_Task(void)
 		   (unsigned int)M1_ContactDetected);
 
 	float32_t m0_velocity = (M0_EncoderType == ENCODER_AS5600) ? Sensor0.velocity : Sensor2.velocity;
-	float32_t m1_velocity = (M1_EncoderType == ENCODER_AS5600) ? Sensor1.velocity : Sensor3.velocity;
+	float32_t m1_velocity = M1_GetSpeedAbs();
 	printf("VEL m0_rpm=%ld m1_rpm=%ld\r\n",
 		   (long)App_Rpm(m0_velocity),
 		   (long)App_Rpm(m1_velocity));
@@ -434,19 +657,32 @@ int main(void)
   MX_ADC3_Init();
   MX_CAN1_Init();
   MX_USART1_UART_Init();
+  App_BootMarker("BOOT USART1\r\n");
   MX_SPI2_Init();
+  App_BootMarker("BOOT SPI2\r\n");
   MX_USART2_UART_Init();
+  App_BootMarker("BOOT USART2\r\n");
   MX_USB_OTG_FS_PCD_Init();
+  App_BootMarker("BOOT USB\r\n");
   MX_SPI1_Init();
+  App_BootMarker("BOOT SPI1\r\n");
   MX_SPI3_Init();
+  App_BootMarker("BOOT SPI3\r\n");
   MX_TIM4_Init();
   MX_TIM3_Init();
   MX_TIM2_Init();
   MX_TIM6_Init();
-  MX_TIM7_Init();
+	MX_TIM7_Init();
+  App_BootMarker("BOOT TIMERS\r\n");
   /* USER CODE BEGIN 2 */
 //  DWT_Init();
+	/* USART2 接收 ESP32 发来的、以换行结束的命令 */
+	HAL_UART_Receive_IT(&huart2, &UART2_RxByte, 1U);
+  App_BootMarker("BOOT UART2RX\r\n");
+
+  App_BootMarker("BOOT PRESTART\r\n");
   Start();
+  App_BootMarker("BOOT POSTSTART\r\n");
   ContactDetect_Init(&M0_ContactDetector,
 					 CONTACT_DETECT_DELTA_CURRENT,
 					 CONTACT_DETECT_HOLD_TIME_MS / CONTACT_DETECT_SAMPLE_PERIOD_MS);
@@ -454,16 +690,25 @@ int main(void)
 					 CONTACT_DETECT_DELTA_CURRENT,
 					 CONTACT_DETECT_HOLD_TIME_MS / CONTACT_DETECT_SAMPLE_PERIOD_MS);
   printf("BOOT CONTACT TEST\r\n");
+#ifdef ESP32_SPI_LINK
+  /* 初始化完成后才允许回传 READY；首次装载在主循环等待片选空闲。 */
+  App_BootMarker("BOOT SPI3 DUPLEX v2 frame=64\r\n");
+#endif
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1)
+	{
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	App_USART1_CommandTask();
+	App_USART2_CommandTask();
+#ifdef ESP32_SPI_LINK
+	App_SPI3_CommandTask();
+#endif
 	M0_ContactDetect_Task();
 	M1_ContactDetect_Task();
 	App_StatusPrint_Task();
@@ -524,6 +769,86 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (huart->Instance == USART1)
+	{
+		uint8_t ch = USART1_RxByte;
+
+		if (UART1_FrameReady == 0U)
+		{
+			if ((ch == '\n') || (ch == '\r'))
+			{
+				if (UART1_BuildLength > 0U)
+				{
+					memcpy(UART1_FrameBuffer, UART1_BuildBuffer, UART1_BuildLength);
+					UART1_FrameLength = UART1_BuildLength;
+					UART1_FrameReady = 1U;
+				}
+				UART1_BuildLength = 0U;
+			}
+			else
+			{
+				if (UART1_BuildLength < (UART1_FRAME_SIZE - 1U))
+				{
+					UART1_BuildBuffer[UART1_BuildLength++] = ch;
+				}
+				else
+				{
+					UART1_BuildLength = 0U;
+				}
+			}
+		}
+
+		HAL_UART_Receive_IT(&huart1, &USART1_RxByte, 1U);
+	}
+	else if (huart->Instance == USART2)
+	{
+		uint8_t ch = UART2_RxByte;
+
+		if (UART2_FrameReady == 0U)
+		{
+			if (ch == '\n')
+			{
+				if (UART2_BuildLength > 0U)
+				{
+					memcpy(UART2_FrameBuffer, UART2_BuildBuffer, UART2_BuildLength);
+					UART2_FrameLength = UART2_BuildLength;
+					UART2_FrameReady = 1U;
+				}
+				UART2_BuildLength = 0U;
+			}
+			else if (ch != '\r')
+			{
+				if (UART2_BuildLength < (UART2_FRAME_SIZE - 1U))
+				{
+					UART2_BuildBuffer[UART2_BuildLength++] = ch;
+				}
+				else
+				{
+					/* 超长帧丢弃，等待下一行重新同步 */
+					UART2_BuildLength = 0U;
+				}
+			}
+		}
+
+		/* 继续接收下一个字节 */
+		HAL_UART_Receive_IT(&huart2, &UART2_RxByte, 1U);
+	}
+}
+
+#ifdef ESP32_SPI_LINK
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi->Instance == SPI3) SPI3_LinkFrameReady = 1U;
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi->Instance == SPI3) SPI3_LinkError = 1U;
+}
+#endif
+
 uint8_t count1 = 0;
 uint8_t count2 = 1;
 uint8_t count3 = 0;
@@ -582,7 +907,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		
 		// 根据编码器类型显示对应的速度值
 		float32_t M0_velocity = (M0_EncoderType == ENCODER_AS5600) ? Sensor0.velocity : Sensor2.velocity;
-		float32_t M1_velocity = (M1_EncoderType == ENCODER_AS5600) ? Sensor1.velocity : Sensor3.velocity;
+		float32_t M1_velocity = M1_GetSpeedAbs();
 		
 		LCD_Show_Motor_Vel(M0_velocity * (60.0f / (2 * PI)), M1_velocity * (60.0f / (2 * PI)));
 		LCD_Show_Servo_Angle(S0_Angle, S1_Angle);	
@@ -604,36 +929,41 @@ void Start(void)
 	LCD_Show_O1();
 	HAL_Delay(100);
 	
-	// 根据选择初始化对应编码器
-	if (M0_EncoderType == ENCODER_AS5600 && M1_EncoderType == ENCODER_AS5600)
+	/* 按电机分别探测编码器。单电机时，未接的那一路标记为DISABLED，
+	 * 不再触发原工程的“报错→LCD→系统复位”死循环。 */
+	if ((M0_EncoderType == ENCODER_AS5600) || (M1_EncoderType == ENCODER_AS5600))
 	{
-		// 初始化AS5600编码器
 		AS5600_Init();
-		I2C1_AS5600_GetAngle();
-		I2C2_AS5600_GetAngle();
-	} else if (M0_EncoderType == ENCODER_AS5047 && M1_EncoderType == ENCODER_AS5047)
+	}
+	if (M0_EncoderType == ENCODER_AS5600)
 	{
-		// 初始化AS5047编码器
-		AS5047P_Init();
-	} else {
-		// 混合使用编码器的情况
-		if (M0_EncoderType == ENCODER_AS5600)
+		I2C1_AS5600_GetAngle();
+		if (Sensor0.result == AS5600_ERROR)
 		{
-			AS5600_Init();
-			I2C1_AS5600_GetAngle();
-		} else {
-			AS5047P_Init();
-		}
-		
-		if (M1_EncoderType == ENCODER_AS5600)
-		{
-			if (M0_EncoderType != ENCODER_AS5600)
-			{
-				AS5600_Init(); // 如果M0没有初始化AS5600，则需要初始化
-			}
-			I2C2_AS5600_GetAngle();
+			M0_EncoderType = ENCODER_DISABLED;
+			printf("ENCODER M0 DISABLED\r\n");
 		}
 	}
+	else if (M0_EncoderType == ENCODER_AS5047)
+	{
+		AS5047P_Init();
+	}
+	if (M1_EncoderType == ENCODER_AS5600)
+	{
+		I2C2_AS5600_GetAngle();
+		if (Sensor1.result == AS5600_ERROR)
+		{
+			M1_EncoderType = ENCODER_DISABLED;
+			printf("ENCODER M1 DISABLED\r\n");
+		}
+	}
+	else if (M1_EncoderType == ENCODER_AS5047)
+	{
+		AS5047P_Init();
+	}
+	/* AS5600 探测失败路径会先关电源并拉刹车；探测结束后恢复正常启动状态，
+	 * 只让上面判定为有效的电机参与 FOC。 */
+	HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin | M1_BK_OUT_Pin, GPIO_PIN_RESET);
 	
 	LCD_Show_O2();
 	HAL_Delay(100);

@@ -75,15 +75,19 @@ void AS5600_RdRawAngle(AS5600 *pStru, I2C_HandleTypeDef *hi2c)
 		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8 | GPIO_PIN_10, GPIO_PIN_SET);
 		
-		/* 关闭电机电源，开启刹车电路 */
+		/* 关闭电机电源，开启刹车电路。不要在这里复位：
+		 * 单电机时另一路没有AS5600，原代码会一直“报错→复位”，
+		 * 导致USB1没有BOOT输出，看起来像整板死机。启动阶段由main.c
+		 * 根据result把缺失的编码器标为DISABLED。 */
 		HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin, GPIO_PIN_RESET);	// 关闭电机电源1引脚
 		HAL_GPIO_WritePin(GPIOE, MOTOR_EN2_Pin, GPIO_PIN_RESET);	// 关闭电机电源2引脚
 		HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOE, M1_BK_OUT_Pin, GPIO_PIN_SET);
 
 		LCD_Show_Image(14, 75, 213, 22, MCUrestart);
-		HAL_Delay(3000);
-		NVIC_SystemReset();
+		pStru->rawAngle = 0U;
+		pStru->angle = 0.0f;
+		pStru->velocity = 0.0f;
 	}
 	else if (pStru->result == AS5600_OK)
 	{

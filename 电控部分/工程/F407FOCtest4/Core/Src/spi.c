@@ -105,12 +105,24 @@ void MX_SPI3_Init(void)
 
   /* USER CODE END SPI3_Init 1 */
   hspi3.Instance = SPI3;
+#ifdef ESP32_SPI_LINK
+  /* ESP32 is the SPI master; STM32 receives fixed-size command frames. */
+  hspi3.Init.Mode = SPI_MODE_SLAVE;
+#else
   hspi3.Init.Mode = SPI_MODE_MASTER;
+#endif
   hspi3.Init.Direction = SPI_DIRECTION_2LINES;
+#ifdef ESP32_SPI_LINK
+  hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi3.Init.NSS = SPI_NSS_HARD_INPUT;
+#else
   hspi3.Init.DataSize = SPI_DATASIZE_16BIT;
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_2EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
+#endif
   hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
@@ -207,6 +219,9 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     __HAL_RCC_SPI3_CLK_ENABLE();
 
     __HAL_RCC_GPIOC_CLK_ENABLE();
+#ifdef ESP32_SPI_LINK
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+#endif
     /**SPI3 GPIO Configuration
     PC10     ------> SPI3_SCK
     PC11     ------> SPI3_MISO
@@ -218,6 +233,19 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+#ifdef ESP32_SPI_LINK
+    /* PA15 is the exposed CS/NSS line on the six-pin SPI header. */
+    GPIO_InitStruct.Pin = GPIO_PIN_15;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF6_SPI3;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    HAL_NVIC_SetPriority(SPI3_IRQn, 2, 0);
+    HAL_NVIC_EnableIRQ(SPI3_IRQn);
+#endif
 
   /* USER CODE BEGIN SPI3_MspInit 1 */
 

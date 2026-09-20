@@ -60,8 +60,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, SPI2_CS_Pin|LEDA_Pin|LEDB_Pin|LEDC_Pin
                           |TFT_RES_Pin|SPI1_CS_Pin, GPIO_PIN_RESET);
 
+#ifndef ESP32_SPI_LINK
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_RESET);
+#endif
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SPI1_DC_GPIO_Port, SPI1_DC_Pin, GPIO_PIN_RESET);
@@ -84,12 +86,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+#ifndef ESP32_SPI_LINK
   /*Configure GPIO pin : SPI3_CS_Pin */
   GPIO_InitStruct.Pin = SPI3_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(SPI3_CS_GPIO_Port, &GPIO_InitStruct);
+#endif
 
   /*Configure GPIO pin : SPI1_DC_Pin */
   GPIO_InitStruct.Pin = SPI1_DC_Pin;

@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "FocLinkProtocol.h"
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -68,6 +69,10 @@ extern TIM_HandleTypeDef htim8;
 extern DMA_HandleTypeDef hdma_usart1_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+#ifdef ESP32_SPI_LINK
+extern SPI_HandleTypeDef hspi3;
+#endif
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -286,30 +291,32 @@ void USART1_IRQHandler(void)
   /* USER CODE END USART1_IRQn 0 */
   HAL_UART_IRQHandler(&huart1);
   /* USER CODE BEGIN USART1_IRQn 1 */
- if(__HAL_UART_GET_FLAG(&huart1, UART_FLAG_IDLE) != RESET)
-    {
-		HAL_UART_DMAStop(&huart1);
-        rx_len = 50 - __HAL_DMA_GET_COUNTER(&hdma_usart1_rx);
-        
-		if(rx_len > 0)
-		{
-			// 创建格式化缓冲区, %.*s用于指定长度字符串
-			uint8_t tx_buffer[60];
-			int tx_len = snprintf((char*)tx_buffer, sizeof(tx_buffer), "%.*s\r\n", rx_len, rx_buffer);
-			
-			if(tx_len > 0)
-			{
-				HAL_UART_Transmit(&huart1, tx_buffer, tx_len, 50);
-			}
-			Parse_Command(rx_buffer, rx_len);       
-		}
-        memset(rx_buffer, 0, 50);
-        HAL_UART_Receive_DMA(&huart1, rx_buffer, 50);
-        __HAL_UART_CLEAR_IDLEFLAG(&huart1);
-        rx_len = 0;
-    }
   /* USER CODE END USART1_IRQn 1 */
 }
+
+/**
+  * @brief This function handles USART2 global interrupt.
+  */
+void USART2_IRQHandler(void)
+{
+  /* USER CODE BEGIN USART2_IRQn 0 */
+
+  /* USER CODE END USART2_IRQn 0 */
+  HAL_UART_IRQHandler(&huart2);
+  /* USER CODE BEGIN USART2_IRQn 1 */
+
+  /* USER CODE END USART2_IRQn 1 */
+}
+
+#ifdef ESP32_SPI_LINK
+/**
+  * @brief This function handles SPI3 global interrupt.
+  */
+void SPI3_IRQHandler(void)
+{
+  HAL_SPI_IRQHandler(&hspi3);
+}
+#endif
 
 /**
   * @brief This function handles TIM8 break interrupt and TIM12 global interrupt.
@@ -405,72 +412,19 @@ void DMA2_Stream7_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 // 指令解析函数
-void Parse_Command(uint8_t* data, uint8_t len)
+uint8_t Parse_Command(uint8_t* data, uint8_t len)
 {
-	char *M0_Cmd, *M1_Cmd, *ptr;
-	
-	// 添加字符串结束符
-	if (len >= 50)
-	{
-		len = 49;
-	}
-	data[len] = '\0';
-	
-	// 分割两个电机指令
-	M0_Cmd = strtok((char*)data, ",");
-	M1_Cmd = strtok(NULL, ",");
-	
-	// 解析M0指令
-	if(M0_Cmd && strlen(M0_Cmd) >= 2)
-	{
-		switch(M0_Cmd[0])
-		{
-			case 'o':
-				M0.mode = MODE_OPEN;
-				M0.param.Ope = strtof(M0_Cmd + 1, &ptr);
-				break;
-			case 'c':
-				M0.mode = MODE_CURRENT;
-				M0.param.Cur = strtof(M0_Cmd + 1, &ptr);
-				break;
-			case 'v':
-				M0.mode = MODE_VELOCITY;
-				M0.param.Vel = strtof(M0_Cmd + 1, &ptr);
-				break;
-			case 'p':
-				M0.mode = MODE_POSITION;
-				M0.param.Pos = strtof(M0_Cmd + 1, &ptr);
-				break;
-			default:
-				M0.mode = MODE_OPEN;  // 无效指令
-		}
-	}
-	
-	// 解析M1指令
-	if(M1_Cmd && strlen(M1_Cmd) >= 2)
-	{
-		switch(M1_Cmd[0])
-		{
-			case 'o':
-				M1.mode = MODE_OPEN;
-				M1.param.Ope = strtof(M1_Cmd + 1, &ptr);
-				break;
-			case 'c':
-				M1.mode = MODE_CURRENT;        
-				M1.param.Cur = strtof(M1_Cmd + 1, &ptr);
-				break;
-			case 'v':
-				M1.mode = MODE_VELOCITY;       
-				M1.param.Vel = strtof(M1_Cmd + 1, &ptr);
-				break;
-			case 'p': 
-				M1.mode = MODE_POSITION;
-				M1.param.Pos = strtof(M1_Cmd + 1, &ptr);
-				break;
-			default:
-				M1.mode = MODE_OPEN;  // 无效指令
-		}
-	}
+    FlpMotor a, b;
+    if (!flp_motor_pair((const char *)data, len, &a, &b)) return 0U;
+    MotorControl next0, next1;
+    const char modes[] = "ocvp";
+    next0.mode = (MotorMode)(strchr(modes, a.mode) - modes);
+    next1.mode = (MotorMode)(strchr(modes, b.mode) - modes);
+    next0.param.Ope = a.value;next1.param.Ope = b.value;
+    /* 两个目标完整校验后一起提交；避免中断看到只改了一半的模式/数值。 */
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();M0 = next0;M1 = next1;__set_PRIMASK(primask);
+    return 1U;
 }
 
 /* USER CODE END 1 */

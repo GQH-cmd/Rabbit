@@ -70,7 +70,7 @@ void FOC_Init(void)
 	PosLoopInit(&M0_Poses);
 	PosLoopInit(&M1_Poses);
 		
-	if (M0_EncoderType == 0) { // AS5600
+	if (M0_EncoderType == ENCODER_AS5600) { // AS5600
 		PID_init(&M0_iq_pid, 1.0f, 0.2f, 0.0f, -7.0f, 7.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
 		PID_init(&M0_id_pid, 1.0f, 4.0f, 0.0f, -7.0f, 7.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
 		PID_init(&M0_vel_pid, 3.5f, 1.0f, 0.0f, -5.0f, 5.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
@@ -83,7 +83,7 @@ void FOC_Init(void)
 
 	}
 
-	if (M1_EncoderType == 0) { // AS5600
+	if (M1_EncoderType == ENCODER_AS5600) { // AS5600
 		PID_init(&M1_iq_pid, 1.0f, 0.2f, 0.0f, -7.0f, 7.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
 		PID_init(&M1_id_pid, 1.0f, 4.0f, 0.0f, -7.0f, 7.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
 		PID_init(&M1_vel_pid, 3.5f, 1.0f, 0.0f, -5.0f, 5.0f, -3.0f, 3.0f);		/* Kp  Ki  Kd  outputMin  outputMax  integralMin  integralMax */
@@ -125,28 +125,34 @@ void FOC_Init(void)
 void Check_Zero_Angle(void)
 {
 	/* 给d轴一个值 */
-	SetSVPWM(M0_Motor.motorNum, 0.0f, 3.0f, 0.0f);
-	SetSVPWM(M1_Motor.motorNum, 0.0f, 3.0f, 0.0f);
+	if (M0_EncoderType != ENCODER_DISABLED)
+	{
+		SetSVPWM(M0_Motor.motorNum, 0.0f, 3.0f, 0.0f);
+	}
+	if (M1_EncoderType != ENCODER_DISABLED)
+	{
+		SetSVPWM(M1_Motor.motorNum, 0.0f, 3.0f, 0.0f);
+	}
 
 	/* 等待电机稳定 */
 	HAL_Delay(1000);
 	
 	/* 根据编码器类型读取角度值 */
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		I2C1_AS5600_GetAngle();
 		M0_Motor.zeroAngle = Sensor0.rawAngle;
-	} else
+	} else if (M0_EncoderType == ENCODER_AS5047)
 	{ // AS5047
 		SPI2_AS5047P_GetAngle();
 		M0_Motor.zeroAngle = Sensor2.rawAngle;
 	}
 	
-	if (M1_EncoderType == 0)
+	if (M1_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		I2C2_AS5600_GetAngle();
 		M1_Motor.zeroAngle = Sensor1.rawAngle;
-	} else
+	} else if (M1_EncoderType == ENCODER_AS5047)
 	{ // AS5047
 		SPI3_AS5047P_GetAngle();
 		M1_Motor.zeroAngle = Sensor3.rawAngle;
@@ -169,58 +175,71 @@ void Check_Dir(void)
 	for (int i = 0; i < 100; i++) 
 	{
 		// 根据编码器类型读取角度
-		if (M0_EncoderType == 0)
+		if (M0_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			I2C1_AS5600_GetAngle();
-		} else
+		} else if (M0_EncoderType == ENCODER_AS5047)
 		{ // AS5047
 			SPI2_AS5047P_GetAngle();
 		}
 		
-		if (M1_EncoderType == 0)
+		if (M1_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			I2C2_AS5600_GetAngle();
-		} else 
+		} else if (M1_EncoderType == ENCODER_AS5047)
 		{ // AS5047
 			SPI3_AS5047P_GetAngle();
 		}
 
 		angle += 0.1f;
 		
-		// 设置双电机SVPWM
-		for (int m = 0; m < 2; m++)
+		// 设置已接电机的SVPWM
+		if (M0_EncoderType != ENCODER_DISABLED)
 		{
-			SetSVPWM(m, 3.0f, 0.0f, angle);
+			SetSVPWM(0, 3.0f, 0.0f, angle);
+		}
+		if (M1_EncoderType != ENCODER_DISABLED)
+		{
+			SetSVPWM(1, 3.0f, 0.0f, angle);
 		}
 	
 		// 处理双电机数据
 		float32_t angles[2];
 		
 		// 根据编码器类型获取角度
-		if (M0_EncoderType == 0)
+		if (M0_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			angles[0] = Normalize_Angle(Sensor0.angle);
-		} else { // AS5047
+		} else if (M0_EncoderType == ENCODER_AS5047) { // AS5047
 			angles[0] = Normalize_Angle(Sensor2.angle);
 		}
+		else
+		{
+			angles[0] = 0.0f;
+		}
 		
-		if (M1_EncoderType == 0)
+		if (M1_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			angles[1] = Normalize_Angle(Sensor1.angle);
-		} else { // AS5047
+		} else if (M1_EncoderType == ENCODER_AS5047) { // AS5047
 			angles[1] = Normalize_Angle(Sensor3.angle);
 		}
-	
-		for (int m = 0; m < 2; m++)
+		else
 		{
-			if (angles[m] > m_angleTemp[m])
-			{
-				m_count[m]++;
-			} else if (angles[m] < m_angleTemp[m])
-			{
-				m_count[m]--;
-			}
-			m_angleTemp[m] = angles[m];
+			angles[1] = 0.0f;
+		}
+	
+		if (M0_EncoderType != ENCODER_DISABLED)
+		{
+			if (angles[0] > m_angleTemp[0]) m_count[0]++;
+			else if (angles[0] < m_angleTemp[0]) m_count[0]--;
+			m_angleTemp[0] = angles[0];
+		}
+		if (M1_EncoderType != ENCODER_DISABLED)
+		{
+			if (angles[1] > m_angleTemp[1]) m_count[1]++;
+			else if (angles[1] < m_angleTemp[1]) m_count[1]--;
+			m_angleTemp[1] = angles[1];
 		}
 		
 		HAL_Delay(1);
@@ -231,9 +250,13 @@ void Check_Dir(void)
 	for (int i = 0; i < 100; i++)
 	{
 		angle -= 0.1f;
-		for (int m = 0; m < 2; m++)
+		if (M0_EncoderType != ENCODER_DISABLED)
 		{
-			SetSVPWM(m, 2.0f, 0.0f, angle);
+			SetSVPWM(0, 2.0f, 0.0f, angle);
+		}
+		if (M1_EncoderType != ENCODER_DISABLED)
+		{
+			SetSVPWM(1, 2.0f, 0.0f, angle);
 		}
 		HAL_Delay(1);
 	}
@@ -241,6 +264,11 @@ void Check_Dir(void)
 	// 方向判定
 	for (int m = 0; m < 2; m++)
 	{
+		if ((m == 0 && M0_EncoderType == ENCODER_DISABLED) ||
+			(m == 1 && M1_EncoderType == ENCODER_DISABLED))
+		{
+			continue;
+		}
 		if (m_count[m] > 50)
 		{
 			*dirs[m] = 1;
@@ -284,7 +312,7 @@ float32_t M0_GetElectric_Angle(float32_t rawAngle)
 {
 	float32_t eAngle;
 	rawAngle = rawAngle - M0_Motor.zeroAngle;
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		eAngle = Normalize_Angle(rawAngle * _2PI / 4096 * M0_PolePairs * M0_Motor.dir);
 	} else 
@@ -304,7 +332,7 @@ float32_t M1_GetElectric_Angle(float32_t rawAngle)
 {
 	float32_t eAngle;
 	rawAngle = rawAngle + M1_Motor.zeroAngle;
-	if (M1_EncoderType == 0)
+	if (M1_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		eAngle = Normalize_Angle(rawAngle * _2PI / 4096 * M1_PolePairs * M1_Motor.dir);
 	} else 
@@ -363,10 +391,15 @@ void Park_Transform(float32_t ialpha, float32_t ibeta, float32_t eAngle, float32
  */
 void M0_OpeLoop(float32_t Target)
 {
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	float32_t eAngle;
 	
 	// 根据编码器类型获取电角度
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		eAngle = M0_GetElectric_Angle(Sensor0.rawAngle);
 	} else 
@@ -389,10 +422,15 @@ void M0_OpeLoop(float32_t Target)
  */
 void M1_OpeLoop(float32_t Target)
 {
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	float32_t eAngle;
 	
 	// 根据编码器类型获取电角度
-	if (M1_EncoderType == 0) 
+	if (M1_EncoderType == ENCODER_AS5600) 
 	{		// AS5600
 		eAngle = M1_GetElectric_Angle(Sensor1.rawAngle);
 	} else 
@@ -415,6 +453,11 @@ void M1_OpeLoop(float32_t Target)
  */
 void M0_CurLoop(void)
 {
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	if (!is_in_vel0_loop)
 	{
 		// 更新位置和速度信息
@@ -424,7 +467,7 @@ void M0_CurLoop(void)
 	float32_t eAngle;
 	
 	// 根据编码器类型获取电角度
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		eAngle = M0_GetElectric_Angle(Sensor0.rawAngle);
 	} else 
@@ -447,6 +490,11 @@ void M0_CurLoop(void)
  */
 void M1_CurLoop(void)
 {
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	if (!is_in_vel1_loop)
 	{
 		// 更新位置和速度信息
@@ -456,7 +504,7 @@ void M1_CurLoop(void)
 	float32_t eAngle;
 	
 	// 根据编码器类型获取电角度
-	if (M1_EncoderType == 0)
+	if (M1_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		eAngle = M1_GetElectric_Angle(Sensor1.rawAngle);
 	} else 
@@ -479,6 +527,13 @@ void M1_CurLoop(void)
  */
 void M0_VelLoop(void)
 {
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		M0_Vels.velocity = 0.0f;
+		M0_Curs.iqr = 0.0f;
+		SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	 is_in_vel0_loop = 1;
 	
     // 根据目标速度动态调整预分频器
@@ -498,7 +553,7 @@ void M0_VelLoop(void)
 		
         // 计算速度环输出
 		float32_t velocity_feedback;
-		if (M0_EncoderType == 0)
+		if (M0_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			velocity_feedback = Sensor0.velocity / (2 * PI); // rad/s → RPS
 		} else 
@@ -524,7 +579,14 @@ void M0_VelLoop(void)
  */
 void M1_VelLoop(void)
 {
-	is_in_vel1_loop = 1;
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		M1_Vels.velocity = 0.0f;
+		M1_Curs.iqr = 0.0f;
+		SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
+	 is_in_vel1_loop = 1;
 	
     // 根据目标速度动态调整预分频器
     int newPrescaler = 9;
@@ -543,7 +605,7 @@ void M1_VelLoop(void)
 		
         // 计算速度环输出
 		float32_t velocity_feedback;
-		if (M1_EncoderType == 0)
+		if (M1_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			velocity_feedback = Sensor1.velocity / (2 * PI); // rad/s → RPS
 		} else 
@@ -569,6 +631,13 @@ void M1_VelLoop(void)
  */
 void M0_PosLoop(void)
 {
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		M0_Vels.velocityTar = 0.0f;
+		M0_Curs.iqr = 0.0f;
+		SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
     if (M0_Poses.cnt == M0_Poses.posLoopPrescaler)
 	{
         M0_Poses.cnt = 0;
@@ -578,7 +647,7 @@ void M0_PosLoop(void)
 
 		/* 计算位置误差 */
 		float32_t error;
-		if (M0_EncoderType == 0)
+		if (M0_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			error = M0_Poses.positionTar - Sensor0.absDegAngle;
 		} else
@@ -602,6 +671,13 @@ void M0_PosLoop(void)
  */
 void M1_PosLoop(void)
 {
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		M1_Vels.velocityTar = 0.0f;
+		M1_Curs.iqr = 0.0f;
+		SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+		return;
+	}
     if (M1_Poses.cnt == M1_Poses.posLoopPrescaler)
 	{
         M1_Poses.cnt = 0;
@@ -611,7 +687,7 @@ void M1_PosLoop(void)
 
 		/* 计算位置误差 */
 		float32_t error;
-		if (M1_EncoderType == 0)
+		if (M1_EncoderType == ENCODER_AS5600)
 		{ // AS5600
 			error = M1_Poses.positionTar - Sensor1.absDegAngle;
 		} else
@@ -784,7 +860,11 @@ void SetSVPWM(float32_t motorNum, float32_t Uq, float32_t Ud, float32_t eAngle)
  */
 void FOC_M0_Velocity_Update(void)
 {
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		return;
+	}
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		AS5600_M0_GetVelocity();
 	} else
@@ -800,7 +880,11 @@ void FOC_M0_Velocity_Update(void)
  */
 void FOC_M1_Velocity_Update(void)
 {
-	if (M1_EncoderType == 0)
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		return;
+	}
+	if (M1_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		AS5600_M1_GetVelocity();
 	} else
@@ -816,7 +900,11 @@ void FOC_M1_Velocity_Update(void)
  */
 void FOC_M0_Position_Update(void)
 {
-	if (M0_EncoderType == 0)
+	if (M0_EncoderType == ENCODER_DISABLED)
+	{
+		return;
+	}
+	if (M0_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		M0_I2C_UpdatePosition(&Sensor0, M0_Motor.zeroAngle);
 	} else
@@ -832,7 +920,11 @@ void FOC_M0_Position_Update(void)
  */
 void FOC_M1_Position_Update(void)
 {
-	if (M1_EncoderType == 0)
+	if (M1_EncoderType == ENCODER_DISABLED)
+	{
+		return;
+	}
+	if (M1_EncoderType == ENCODER_AS5600)
 	{ // AS5600
 		M1_I2C_UpdatePosition(&Sensor1, M1_Motor.zeroAngle);
 	} else { // AS5047

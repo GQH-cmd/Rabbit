@@ -61,6 +61,10 @@ void ADC_IRQHandler(void);
 void TIM1_BRK_TIM9_IRQHandler(void);
 void TIM4_IRQHandler(void);
 void USART1_IRQHandler(void);
+void USART2_IRQHandler(void);
+#ifdef ESP32_SPI_LINK
+void SPI3_IRQHandler(void);
+#endif
 void TIM8_BRK_TIM12_IRQHandler(void);
 void TIM6_DAC_IRQHandler(void);
 void TIM7_IRQHandler(void);
@@ -68,7 +72,7 @@ void DMA2_Stream0_IRQHandler(void);
 void DMA2_Stream2_IRQHandler(void);
 void DMA2_Stream7_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-void Parse_Command(uint8_t* data, uint8_t len);
+uint8_t Parse_Command(uint8_t* data, uint8_t len);
 
 /* USER CODE END EFP */
 

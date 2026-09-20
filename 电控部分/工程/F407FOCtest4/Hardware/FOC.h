@@ -34,6 +34,17 @@ extern "C" {
 #include "Motor.h"
 #include "sin_cos.h"
 
+/* 编码器状态：0=AS5600，1=AS5047，2=该电机未接/禁用。 */
+#ifndef ENCODER_AS5600
+#define ENCODER_AS5600   0U
+#endif
+#ifndef ENCODER_AS5047
+#define ENCODER_AS5047   1U
+#endif
+#ifndef ENCODER_DISABLED
+#define ENCODER_DISABLED 2U
+#endif
+
 /* Private Variables ---------------------------------------------------------*/
 typedef struct __SVPWMOUTPUT
 {

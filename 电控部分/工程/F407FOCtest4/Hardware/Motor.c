@@ -190,6 +190,15 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		M0_Curs.iw = u_1 / (R_SHUNT * GAIN);
 		M0_Curs.iu = u_2 / (R_SHUNT * GAIN);
 		M0_Curs.iv =  -(M0_Curs.iu + M0_Curs.iw);
+
+		if (M0_EncoderType == ENCODER_DISABLED)
+		{
+			M0_Curs.iqr = 0.0f;
+			M0_Curs.Ud = 0.0f;
+			M0_Curs.Uq = 0.0f;
+			SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+			return;
+		}
 		
 		/*** 电机编码器读取角度 ***/
 		if (M0_EncoderType == 0)
@@ -241,6 +250,17 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		M1_Curs.iw = u_1 / (R_SHUNT * GAIN);
 		M1_Curs.iu = u_2 / (R_SHUNT * GAIN);
 		M1_Curs.iv =  -(M1_Curs.iu + M1_Curs.iw);
+
+		/* 未接第二个电机/编码器时，禁止进入M1控制和I2C2/SPI3读取，
+		 * 否则会把缺失的AS5600当成通信故障反复处理。 */
+		if (M1_EncoderType == ENCODER_DISABLED)
+		{
+			M1_Curs.iqr = 0.0f;
+			M1_Curs.Ud = 0.0f;
+			M1_Curs.Uq = 0.0f;
+			SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
+			return;
+		}
 	  
 		/*** 电机编码器读取角度 ***/
 		if (M1_EncoderType == 0)

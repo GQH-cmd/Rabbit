@@ -58,7 +58,7 @@ extern uint8_t rx_len;
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-
+uint8_t Parse_Command(uint8_t* data, uint8_t len);
 
 /* USER CODE END EFP */
 
@@ -100,3 +100,4 @@ void Start(void);
 #endif
 
 #endif /* __MAIN_H */
+
