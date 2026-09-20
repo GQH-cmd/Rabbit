@@ -1,9 +1,15 @@
 # ESP32-S3 ↔ FOC SPI 联调
 
-## 2026-09-19：新 ESP32-S3 N16R8 联调程序
+## 文档状态
 
-本次重写 ESP32 程序，**未修改 FOC 源码、FOC BIN、CubeMX 配置或 65 RPM 接触判定**。
-目前是电脑串口 → ESP32 → SPI3 → FOC；还没有加入 Wi-Fi 或网站接口。
+> 本页保留的是早期“电脑串口 → ESP32 → SPI3 → FOC”的手动联调记录，使用旧的 32 字节测试协议。
+> 当前提交使用的是 `esp32_spi_bridge_mqtt_provisioned/README_MQTT.md`：
+> 网站后端 → MQTT → ESP32-S3 → SPI3 → STM32 FOC，使用 SPI 双向协议 v2（64 字节、ACK、遥测）。
+> 当前 ESP32-S3 无线方案不接 USART2；USART2 仅是改用 UART 无线模块时的备用方案。
+
+## 2026-09-19：早期 ESP32-S3 手动 SPI 联调程序
+
+本节记录早期手动联调程序；当前 MQTT 网关源码和配网流程见上方指定文档。
 
 打开这个文件，旁边的 `FocSpiProtocol.h` 必须保留在同一文件夹：
 
@@ -66,7 +72,7 @@ E:\养兔子\FOC_all\3_F407FOCtest4_new\build-gcc\esp32_spi\esp32_spi_bridge\esp
 - 本机 C++ 回归测试目前 **19 项通过**：CRC、固定帧、ARM、输入校验、边界长度、
   CR/LF、超时丢弃、序号回绕、帧间隔、初始化失败、上电/空闲不自动发包。
 - SPI Mode 0，100 kHz，32 字节定长，发送间隔至少 100 ms，无自动重发。
-- FOC 目前只有 SPI 接收逻辑，**没有 SPI 回传 ACK 协议**。MISO 读到的字节不当成功依据。
+- 本节旧版程序的 FOC 只有 SPI 接收逻辑，**没有 SPI 回传 ACK 协议**；当前 v2 固件已经加入 ACK 和遥测，不能把本节旧结论套到新版。
   `SPI3 OK` 表示接收后调用了解析，不等于电机一定按目标运行。
 - FOC 使用单接收缓冲区，降速和限频只是减少覆盖风险；不是完善的双向可靠协议。
 - 上电不自动 PING、不自动启动电机、不重放旧命令；ARM 不是硬件安全联锁。
