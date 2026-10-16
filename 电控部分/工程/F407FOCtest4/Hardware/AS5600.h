@@ -71,14 +71,19 @@ typedef struct __AS5600STRUCT
     float32_t   velThreshold;			// 噪声容限阈值
     uint32_t    lastTs;					// 上一个时间戳
     float32_t   lastTotalAngle;			// 带方向连续性的总角度缓存
+    uint32_t    angleTs;                 // 最近一次成功读取角度的TIM2微秒时间戳
+    bool        angleFresh;              // 新角度只允许消费一次，控制回调不能重复微分
+    bool        velocityInitialized;     // 独立初始化标志；时间戳0也是合法采样时刻
 }AS5600;
 
 extern AS5600 Sensor0;
 extern AS5600 Sensor1;
+extern volatile uint8_t AS5600_ReadFaults;
 
 /* Private function prototypes -----------------------------------------------*/ 
 // 通用函数
 void AS5600_Init(void);
+void AS5600_ReportErrors(void); /* 仅主循环调用；不清故障、不自动重启 */
 void AS5600_RdRawAngle(AS5600 *pStru, I2C_HandleTypeDef *hi2c);
 void I2C_Update_Position(AS5600 *pStru, float32_t ZeroEAngle);
 float32_t I2C_Get_Velocity(AS5600 *pStru);

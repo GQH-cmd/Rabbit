@@ -19,6 +19,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "FOC.h"
 #include "FocLinkProtocol.h"
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
@@ -72,6 +73,8 @@ extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 #ifdef ESP32_SPI_LINK
 extern SPI_HandleTypeDef hspi3;
+extern DMA_HandleTypeDef hdma_spi3_rx;
+extern DMA_HandleTypeDef hdma_spi3_tx;
 #endif
 /* USER CODE BEGIN EV */
 
@@ -253,6 +256,10 @@ void TIM1_BRK_TIM9_IRQHandler(void)
   /* USER CODE BEGIN TIM1_BRK_TIM9_IRQn 0 */
   if(__HAL_TIM_GET_FLAG(&htim1, TIM_FLAG_BREAK) != RESET)
   {
+#if FOC_M1_ONLY
+    FOC_HardwareBreakFault |= 1U;
+    FOC_M1EncoderFaultStop();
+#endif
 	HAL_GPIO_WritePin(GPIOE, TEST_LED_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin, GPIO_PIN_RESET);	// 关闭电机电源引脚
 	HAL_GPIO_WritePin(GPIOE, MOTOR_EN2_Pin, GPIO_PIN_RESET);	// 关闭电机电源引脚
@@ -310,6 +317,22 @@ void USART2_IRQHandler(void)
 
 #ifdef ESP32_SPI_LINK
 /**
+  * @brief This function handles DMA1 stream0 global interrupt for SPI3 RX.
+  */
+void DMA1_Stream0_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_spi3_rx);
+}
+
+/**
+  * @brief This function handles DMA1 stream5 global interrupt for SPI3 TX.
+  */
+void DMA1_Stream5_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_spi3_tx);
+}
+
+/**
   * @brief This function handles SPI3 global interrupt.
   */
 void SPI3_IRQHandler(void)
@@ -326,6 +349,10 @@ void TIM8_BRK_TIM12_IRQHandler(void)
   /* USER CODE BEGIN TIM8_BRK_TIM12_IRQn 0 */
   if(__HAL_TIM_GET_FLAG(&htim8, TIM_FLAG_BREAK) != RESET)
   {
+#if FOC_M1_ONLY
+    FOC_HardwareBreakFault |= 2U;
+    FOC_M1EncoderFaultStop();
+#endif
 	HAL_GPIO_WritePin(GPIOE, TEST_LED_Pin, GPIO_PIN_SET);
 	HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin, GPIO_PIN_RESET);	// 关闭电机电源引脚
 	HAL_GPIO_WritePin(GPIOE, MOTOR_EN2_Pin, GPIO_PIN_RESET);	// 关闭电机电源引脚
@@ -414,8 +441,26 @@ void DMA2_Stream7_IRQHandler(void)
 // 指令解析函数
 uint8_t Parse_Command(uint8_t* data, uint8_t len)
 {
+    extern uint8_t M0_EncoderType, M1_EncoderType;
+#if FOC_M1_ONLY
+    if (len == 7U && memcmp(data, "RECOVER", 7U) == 0) {
+        uint8_t recovered = FOC_M1RecoverEncoder();
+        if (recovered) App_DiscardPendingMotorCommands();
+        return recovered;
+    }
+#endif
     FlpMotor a, b;
     if (!flp_motor_pair((const char *)data, len, &a, &b)) return 0U;
+#if FOC_M1_ONLY
+    if (a.mode != 'o' || a.value != 0.0f) return 0U;
+#endif
+    /* 仅使用已配置轴；M1故障/失控时仍只接受STOP，不自动解除故障。 */
+    if ((motor_axes_fault(M0_EncoderType == ENCODER_DISABLED, M1_EncoderType == ENCODER_DISABLED) || FOC_VelocityFault != 0U
+#if FOC_M1_ONLY
+         || FOC_HardwareBreakFault != 0U
+#endif
+        ) &&
+        !(a.mode == 'o' && a.value == 0.0f && b.mode == 'o' && b.value == 0.0f)) return 0U;
     MotorControl next0, next1;
     const char modes[] = "ocvp";
     next0.mode = (MotorMode)(strchr(modes, a.mode) - modes);
@@ -423,7 +468,12 @@ uint8_t Parse_Command(uint8_t* data, uint8_t len)
     next0.param.Ope = a.value;next1.param.Ope = b.value;
     /* 两个目标完整校验后一起提交；避免中断看到只改了一半的模式/数值。 */
     uint32_t primask = __get_PRIMASK();
-    __disable_irq();M0 = next0;M1 = next1;__set_PRIMASK(primask);
+    __disable_irq();
+#if FOC_M1_ONLY
+    if (!(a.mode == 'o' && a.value == 0.0f && b.mode == 'o' && b.value == 0.0f) &&
+        !FOC_M1ReleaseRecoveryHold()) { __set_PRIMASK(primask);return 0U; }
+#endif
+    M0 = next0;M1 = next1;__set_PRIMASK(primask);
     return 1U;
 }
 

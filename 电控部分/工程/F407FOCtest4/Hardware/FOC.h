@@ -54,6 +54,14 @@ typedef struct __SVPWMOUTPUT
 }SVPWM_Outputs;
 
 extern float32_t zero;
+/* 速度闭环失控锁存：0=正常，1=M0，2=M1；故障后仅复位可清除。 */
+extern volatile uint8_t FOC_VelocityFault;
+extern volatile uint8_t FOC_HardwareBreakFault; /* 硬件BREAK仍仅复位清除，RECOVER不能清。 */
+/* M1编码器重检不会自动校准/续转；仅恢复已完成校准的同一台电机。 */
+extern volatile uint8_t FOC_M1CalibrationValid, FOC_M1RecoveryHold;
+void FOC_M1EncoderFaultStop(void);
+uint8_t FOC_M1RecoverEncoder(void);
+uint8_t FOC_M1ReleaseRecoveryHold(void);
 extern float32_t M0_velocity;
 extern float32_t M1_velocity;
 

@@ -28,13 +28,17 @@
 /* 预计算常量 */
 #define RAW_TO_RAD          (_2PI / 4095.0f)    // 原始数据转弧度的系数
 #define RAW_TO_DEG          (360.0f / 4096.0f)  // 原始数据转角度的系数
-#define MIN_DELTA_TIME      50                  // 最小有效时间差值（计数值）
-#define MAX_DELTA_TIME      (uint32_t)(1e6 / TIMER_PERIOD_US) // 最大有效时间差值（1秒）
+#define AS5600_VEL_MIN_US   1000U               // 至少累计1ms角度差，避免量化抖动被短间隔放大
+#define AS5600_VEL_MAX_US   1000000U            // 超过1秒重新建立差分基准，不把未知速度填零
+#define AS5600_VEL_FILTER_US 5000U              // 一阶低通时间常数5ms；系数随采样时间而非瞬时速度变化
 #define VELOCITY_NORM       100.0f              // 速度归一化参数
 
 /* Private Variables --------------------------------------------------------*/
 AS5600 Sensor0 = {0};
 AS5600 Sensor1 = {0};
+volatile uint8_t AS5600_ReadFaults = 0U; /* bit0=I2C1，bit1=I2C2；复位前保留 */
+static uint8_t AS5600_ReportedFaults = 0U;
+extern uint8_t M0_EncoderType, M1_EncoderType;
 
 // 计算TIM2实际时钟频率1MHz（单位：Hz）
 const float32_t TIM2_CLOCK = (SYSTEM_CLOCK / APB1_PRESCALER) * 2 / (TIM2_PRESCALER + 1);
@@ -47,10 +51,22 @@ const float32_t TIMER_PERIOD_US = 1.0f / (TIM2_CLOCK / 1e6); // 每个计数对�
  */
 void AS5600_Init(void)
 {
+    AS5600_ReadFaults = 0U;
+    AS5600_ReportedFaults = 0U;
 	Sensor0.motorNum = 0;			// motorNum 设置为 0
 	Sensor0.sensorPrescaler = 2; 	// 10kHz
 	Sensor1.motorNum = 1; 			// motorNum 设置为 1
 	Sensor1.sensorPrescaler = 2; 	// 10kHz
+    AS5600 *sensors[2] = {&Sensor0, &Sensor1};
+    for (unsigned int i = 0; i < 2; ++i)
+    {
+        sensors[i]->velocity = 0.0f;
+        sensors[i]->lastTs = 0U;
+        sensors[i]->lastTotalAngle = 0.0f;
+        sensors[i]->angleTs = 0U;
+        sensors[i]->angleFresh = false;
+        sensors[i]->velocityInitialized = false;
+    }
 }
 
 /**
@@ -66,33 +82,31 @@ void AS5600_RdRawAngle(AS5600 *pStru, I2C_HandleTypeDef *hi2c)
     pStru->result = AS5600_RdReg(hi2c, RAW_ANGLE_H, rbuff, 2);
 	if (pStru->result == AS5600_ERROR)
 	{
-		/* 配置GPIO为开漏输出 */
-		GPIO_InitTypeDef GPIO_InitStruct;
-		GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11;
-		GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-		GPIO_InitStruct.Pull = GPIO_PULLUP;
-		GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-		HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8 | GPIO_PIN_10, GPIO_PIN_SET);
-		
-		/* 关闭电机电源，开启刹车电路。不要在这里复位：
-		 * 单电机时另一路没有AS5600，原代码会一直“报错→复位”，
-		 * 导致USB1没有BOOT输出，看起来像整板死机。启动阶段由main.c
-		 * 根据result把缺失的编码器标为DISABLED。 */
+		/* 出厂代码这里改写了 PB8~PB11，导致一路 I2C 失败后另一条总线也失效。
+		 * 不改引脚复用、不自动复位；两电机项目任一路故障都停机。 */
+		if (pStru == &Sensor0) M0_EncoderType = ENCODER_DISABLED;
+		else if (pStru == &Sensor1) M1_EncoderType = ENCODER_DISABLED;
+#if FOC_M1_ONLY
+        if (pStru == &Sensor1) FOC_M1EncoderFaultStop();
+#endif
 		HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin, GPIO_PIN_RESET);	// 关闭电机电源1引脚
 		HAL_GPIO_WritePin(GPIOE, MOTOR_EN2_Pin, GPIO_PIN_RESET);	// 关闭电机电源2引脚
 		HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOE, M1_BK_OUT_Pin, GPIO_PIN_SET);
 
-		LCD_Show_Image(14, 75, 213, 22, MCUrestart);
 		pStru->rawAngle = 0U;
 		pStru->angle = 0.0f;
 		pStru->velocity = 0.0f;
+        pStru->angleFresh = false;
+        pStru->velocityInitialized = false;
 	}
 	else if (pStru->result == AS5600_OK)
 	{
+        const uint32_t sampledAt = get_micros();
         pStru->rawAngle = (rbuff[0] & 0x0f) << 8| rbuff[1];			// 获得原始数据
 		pStru->angle = pStru->rawAngle * RAW_TO_RAD;			    // 将原始角度转换为弧度值
+        pStru->angleTs = sampledAt;
+        pStru->angleFresh = true;
 	}
 }
 
@@ -125,65 +139,41 @@ float32_t I2C2_AS5600_GetAngle(void)
  */
 float32_t I2C_Get_Velocity(AS5600 *pStru)
 {
-	uint32_t curTick = get_micros();
-	
-	// 精确时间差计算（考虑32位计数器溢出）
-	uint32_t deltaT = delta_time_us(pStru->lastTs);
-	
-	// 初始化处理
-	if(pStru->lastTs == 0)
-	{
-		pStru->lastTs = curTick;
-		pStru->lastTotalAngle = pStru->numOfCircle * _2PI + pStru->angle;
-		return 0.0f;
-	}
-	
-	// 时间有效性校验（最小和最大时间间隔）
-	if(deltaT < 50 || deltaT > 1000000) // 50微秒~1秒的有效范围
-	{
-		return pStru->velocity;
-	}
-	
-	/* 精确角度差计算 */
-	float32_t currentTotalAngle = pStru->numOfCircle * _2PI + pStru->angle;
-	float32_t deltaAngle = currentTotalAngle - pStru->lastTotalAngle;
-	
-	/* 角度环跳变修正 */
-	if(my_fabsf(deltaAngle) > PI)
-	{
-		deltaAngle -= (deltaAngle > 0) ? _2PI : -_2PI;
-	}
-	
-	/* 精确时间计算 */
-	float32_t delta_t_s = deltaT * 1e-6f; // 转换为秒
-	
-	/* 速度计算（带符号保护） */
-	float32_t velocity = (delta_t_s > 1e-6f) ? (deltaAngle / delta_t_s) : 0.0f;
-	
-	/* 动态滤波 - 优化版本 */
-	float32_t abs_vel = my_fabsf(velocity);
-	float32_t alpha;
-	
-	if (abs_vel < 10.0f)
-	{
-		alpha = 0.01f; // 低速时使用最小滤波系数
-	} 
-	else if (abs_vel > 100.0f)
-	{
-		alpha = 0.2f; // 高速时使用最大滤波系数
-	} 
-	else
-	{
-		alpha = 0.01f + 0.19f * (abs_vel / 100.0f); // 线性比例计算滤波系数
-	}
-	
-	pStru->velocity = alpha * velocity + (1.0f - alpha) * pStru->velocity;
-	
-	/* 更新基准值 */
-	pStru->lastTotalAngle = currentTotalAngle;
-	pStru->lastTs = curTick;
-	
-	return pStru->velocity;
+    /* I2C角度每几次控制回调才更新一次；旧角度不能当成新的零速度样本。
+     * 使用读角度时的同一份时间戳，不能用控制函数调用时刻计算采样间隔。 */
+    if (!pStru->angleFresh) return pStru->velocity;
+    pStru->angleFresh = false;
+    const uint32_t curTick = pStru->angleTs;
+    const float32_t currentTotalAngle = pStru->numOfCircle * _2PI + pStru->angle;
+    if (!pStru->velocityInitialized)
+    {
+        pStru->lastTs = curTick;
+        pStru->lastTotalAngle = currentTotalAngle;
+        pStru->velocityInitialized = true;
+        return pStru->velocity;
+    }
+
+    /* TIM2是1MHz的32位计数器；无符号相减同时处理回绕。短窗口不更新基准，
+     * 等下一份新角度累计足够的时间与位移，不能按“角度没变”强制填零。 */
+    const uint32_t deltaT = curTick - pStru->lastTs;
+    if (deltaT < AS5600_VEL_MIN_US) return pStru->velocity;
+    if (deltaT > AS5600_VEL_MAX_US)
+    {
+        pStru->lastTs = curTick;
+        pStru->lastTotalAngle = currentTotalAngle;
+        return pStru->velocity;
+    }
+    float32_t deltaAngle = currentTotalAngle - pStru->lastTotalAngle;
+    if (my_fabsf(deltaAngle) > PI)
+    {
+        deltaAngle -= (deltaAngle > 0.0f) ? _2PI : -_2PI;
+    }
+    const float32_t velocity = deltaAngle / ((float32_t)deltaT * 1e-6f);
+    const float32_t alpha = (float32_t)deltaT / (AS5600_VEL_FILTER_US + deltaT);
+    pStru->velocity += alpha * (velocity - pStru->velocity);
+    pStru->lastTotalAngle = currentTotalAngle;
+    pStru->lastTs = curTick;
+    return pStru->velocity;
 }
 
 /**
@@ -286,17 +276,26 @@ uint8_t AS5600_RdReg(I2C_HandleTypeDef *hi2c, uint16_t regAdd, uint8_t *pData, u
 		HAL_GPIO_WritePin(GPIOE, TEST_LED_Pin, GPIO_PIN_SET);
 		if (hi2c->Instance == I2C1)
 		{
-			printf("I2C Error: Instance=0x%08X\n", (unsigned int)hi2c->Instance);
-			LCD_Clear(BLACK);
-			LCD_Show_Image(7, 43, 100, 25, M0AS5600Error);
+			AS5600_ReadFaults |= 1U;
 		} 
 		else if (hi2c->Instance == I2C2)
 		{
-			LCD_Clear(BLACK);
-			LCD_Show_Image(133, 43, 100, 25, M1AS5600Error);
+			AS5600_ReadFaults |= 2U;
 		}
 		return AS5600_ERROR;
 	}
+}
+
+/* 仅由主循环调用。中断读取失败必须先返回，让原有停机分支立即关电机，
+ * 不能在停机前进行串口输出或整屏绘制。LCD由TIM6刷新，此处只打印，避免
+ * 主循环与TIM6同时操作没有事务锁的LCD总线。锁存位不清除，不自动重启。 */
+void AS5600_ReportErrors(void)
+{
+    const uint8_t pending = AS5600_ReadFaults & (uint8_t)~AS5600_ReportedFaults;
+    if (pending == 0U) return;
+    AS5600_ReportedFaults |= pending;
+    printf("AS5600_READ_FAULT buses=0x%02X; motors disabled; STOP then RECOVER (M1-only); calibration/velocity faults require separate handling\r\n",
+           (unsigned int)AS5600_ReadFaults);
 }
 
 /**

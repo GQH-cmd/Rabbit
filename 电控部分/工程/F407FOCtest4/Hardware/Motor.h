@@ -21,6 +21,7 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
+#include "MotorAxesConfig.h"
 #include "tim.h"
 #include "usart.h"
 #include "stm32f4xx_it.h"

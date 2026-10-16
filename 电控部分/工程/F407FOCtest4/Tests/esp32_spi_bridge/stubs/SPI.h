@@ -7,7 +7,15 @@ struct SPISettings {
   uint32_t hz; int order; int mode;
   SPISettings(uint32_t h, int o, int m) : hz(h), order(o), mode(m) {}
 };
-namespace fake { inline std::deque<std::vector<uint8_t>> replies; }
+namespace fake {
+inline std::deque<std::vector<uint8_t>> replies;
+// 记录每次SPI操作时的GPIO输出，用于验证STOP先关泵再等待总线。
+inline std::vector<std::pair<int,int>> relayAtTransfer;
+inline int gpioLevel(int pin){
+  for(auto it=writes.rbegin();it!=writes.rend();++it)if(it->first==pin)return it->second;
+  return -1;
+}
+}
 class SPIClass {
   bool transaction = false;
 public:
@@ -21,6 +29,7 @@ public:
   }
   void transferBytes(const uint8_t* tx, uint8_t* rx, uint32_t n) {
     fake::framingOk &= transaction && fake::cs == LOW;
+    fake::relayAtTransfer.emplace_back(fake::gpioLevel(4),fake::gpioLevel(5));
     fake::frames.emplace_back(tx, tx + n); fake::times.push_back(millis());
     if (rx) {
       memset(rx,0xff,n);

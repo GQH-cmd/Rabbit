@@ -87,9 +87,14 @@ inline bool parseCommand(const char* data,size_t length,Command& out) {
   ws(); return i==length && (seen&1) && (!(seen&2)||identifier(out.request)) && (!(seen&4)||identifier(out.session));
 }
 inline bool isStop(const char* s) { return !strcmp(s,"STOP")||!strcmp(s,"DISARM")||!strcmp(s,"o0,o0"); }
+// 任务编号不再必填；当前会话仍须匹配，避免重连后的旧运动命令被执行。
+inline bool sessionAllowed(const Command& c,const char* current) {
+  return isStop(c.text)||!strcmp(c.text,"PING")||
+    (current&&*current&&c.session[0]&&!strcmp(c.session,current));
+}
 inline bool remoteAllowed(const char* s) {
   bool zero=false;
-  return isStop(s)||!strcmp(s,"ARM")||!strcmp(s,"PING")||!strcmp(s,"KEEPALIVE")||foc::validMotorCommand(s,zero);
+  return isStop(s)||!strcmp(s,"FEED")||!strcmp(s,"ARM")||!strcmp(s,"PING")||!strcmp(s,"KEEPALIVE")||foc::validMotorCommand(s,zero);
 }
 // 网络控制采用五秒租约；断线、换会话或心跳到期都需要重新解锁，不自动恢复运行。
 struct Lease {

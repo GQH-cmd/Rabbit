@@ -22,6 +22,11 @@
 
 /* USER CODE BEGIN 0 */
 
+#define ADC_AUX_POLL_TIMEOUT_MS 1U
+/* 辅助常规通道与FOC注入通道共用ADC，失败时保留上次值，不停止整个ADC。 */
+volatile uint8_t ADC_AuxReadFaults = 0U; /* bit0/1/2=ADC1/2/3；复位前保留 */
+static uint16_t ADC_AuxLastValue[3] = {0};
+
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
@@ -517,18 +522,25 @@ float32_t R_ntc_to_temperature(float32_t R_ntc, float32_t T_start, float32_t T_e
 /* 读取ADC */
 uint16_t Read_ADC_Value(ADC_HandleTypeDef* hadc, uint32_t channel)
 {
-	uint16_t adc_value = 0;
-	ADC_ChannelConfTypeDef sConfig;
-	sConfig.Channel = channel;
-	HAL_ADC_ConfigChannel(hadc, &sConfig);
+    unsigned int index;
+    if (hadc == &hadc1) index = 0U;
+    else if (hadc == &hadc2) index = 1U;
+    else if (hadc == &hadc3) index = 2U;
+    else return 0U;
 
-	HAL_ADC_Start(hadc);  // 启动ADC
-	if (HAL_ADC_PollForConversion(hadc, HAL_MAX_DELAY) == HAL_OK)
-	{  
-		adc_value = HAL_ADC_GetValue(hadc);
-	}
-	//	HAL_ADC_Stop(hadc);  // 停止ADC
-
-	return adc_value;
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = channel;
+    sConfig.Rank = 1U;
+    sConfig.SamplingTime = ADC_SAMPLETIME_3CYCLES;
+    if (HAL_ADC_ConfigChannel(hadc, &sConfig) != HAL_OK ||
+        HAL_ADC_Start(hadc) != HAL_OK ||
+        HAL_ADC_PollForConversion(hadc, ADC_AUX_POLL_TIMEOUT_MS) != HAL_OK)
+    {
+        ADC_AuxReadFaults |= (uint8_t)(1U << index);
+        return ADC_AuxLastValue[index];
+    }
+    ADC_AuxLastValue[index] = (uint16_t)HAL_ADC_GetValue(hadc);
+    /* 不调用HAL_ADC_Stop，否则同实例上的FOC注入采样也会被关闭。 */
+    return ADC_AuxLastValue[index];
 }
 /* USER CODE END 1 */

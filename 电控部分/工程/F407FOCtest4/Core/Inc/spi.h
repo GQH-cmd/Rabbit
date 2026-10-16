@@ -37,6 +37,10 @@ extern SPI_HandleTypeDef hspi1;
 extern SPI_HandleTypeDef hspi2;
 
 extern SPI_HandleTypeDef hspi3;
+#ifdef ESP32_SPI_LINK
+extern DMA_HandleTypeDef hdma_spi3_rx;
+extern DMA_HandleTypeDef hdma_spi3_tx;
+#endif
 
 /* USER CODE BEGIN Private defines */
 

@@ -148,7 +148,8 @@
   * @brief This is the HAL system configuration section
   */
 #define  VDD_VALUE		      3300U /*!< Value of VDD in mv */
-#define  TICK_INT_PRIORITY            2U   /*!< tick interrupt priority */
+/* HAL超时依赖SysTick；必须能抢占使用阻塞I2C/ADC的ADC、TIM中断。 */
+#define  TICK_INT_PRIORITY            0U   /*!< tick interrupt priority */
 #define  USE_RTOS                     0U
 #define  PREFETCH_ENABLE              1U
 #define  INSTRUCTION_CACHE_ENABLE     1U

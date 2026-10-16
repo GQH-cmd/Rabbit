@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "tim.h"
+#include "MotorAxesConfig.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -799,6 +800,7 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 /* USER CODE BEGIN 1 */
 void Motor_TIM18_Init(void)
 {
+#if !FOC_M1_ONLY
 	HAL_TIM_Base_Start(&htim1);
 	__HAL_TIM_ENABLE_IT(&htim1, TIM_IT_UPDATE);
 	HAL_TIM_PWM_Start (&htim1, TIM_CHANNEL_1);
@@ -809,6 +811,10 @@ void Motor_TIM18_Init(void)
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 	__HAL_TIM_MOE_ENABLE(&htim1);
+#else
+	/* M0永久停用：不启动TIM1/PWM，主输出保持关闭。 */
+	__HAL_TIM_MOE_DISABLE(&htim1);
+#endif
 
 	HAL_TIM_Base_Start(&htim8);
 	__HAL_TIM_ENABLE_IT(&htim8, TIM_IT_UPDATE);

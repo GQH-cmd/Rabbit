@@ -58,6 +58,7 @@ extern uint8_t rx_len;
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+void App_DiscardPendingMotorCommands(void);
 uint8_t Parse_Command(uint8_t* data, uint8_t len);
 
 /* USER CODE END EFP */

@@ -48,6 +48,7 @@ void MX_ADC3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 extern  uint16_t adcData[2];
+extern volatile uint8_t ADC_AuxReadFaults; /* bit0/1/2=ADC1/2/3辅助通道读取故障 */
 
 typedef struct {
 	float32_t value1;

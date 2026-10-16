@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdarg>
+#include <cctype>
 #include <string>
 #include <deque>
 #include <vector>
@@ -15,6 +16,8 @@
 #define LOW 0
 namespace fake {
 inline uint32_t now = 0;
+// 默认静止；跨毫秒边界回归可令每次读取时钟前进，模拟真实硬件时钟。
+inline uint32_t millisStep = 0;
 inline uint32_t cpu = 240;
 inline int cs = HIGH;
 inline bool beginOk = true;
@@ -26,7 +29,7 @@ inline uint32_t spiHz = 0;
 inline int spiMode = -1;
 inline int pins[4] = {};
 }
-// String/readStringUntil exist here only to run regressions on the OLD sketch.
+// 只替换Arduino字符串API；串口归一化/分行逻辑执行真实草图函数。
 class String {
   std::string s;
 public:
@@ -38,6 +41,10 @@ public:
     s = s.substr(a, s.find_last_not_of(" \r\n\t") - a + 1);
   }
   size_t length() const { return s.size(); }
+  bool isEmpty() const { return s.empty(); }
+  void toUpperCase(){for(char& c:s)c=static_cast<char>(std::toupper(static_cast<unsigned char>(c)));}
+  bool operator==(const char* other) const { return s==other; }
+  bool startsWith(const char* prefix) const { return s.rfind(prefix,0)==0; }
   const char* c_str() const { return s.c_str(); }
 };
 class FakeSerial {
@@ -61,7 +68,7 @@ public:
   }
 };
 inline FakeSerial Serial;
-inline uint32_t millis() { return fake::now; }
+inline uint32_t millis() { auto now = fake::now; fake::now += fake::millisStep; return now; }
 inline void delay(uint32_t n) { fake::now += n; }
 inline void delayMicroseconds(uint32_t) {}
 inline void pinMode(int, int) {}

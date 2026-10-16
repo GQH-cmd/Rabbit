@@ -20,6 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "gpio.h"
+#include "MotorAxesConfig.h"
 
 /* USER CODE BEGIN 0 */
 
@@ -55,6 +56,9 @@ void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, TEST_LED_Pin|M0_BK_OUT_Pin|M1_BK_OUT_Pin|MOTOR_EN1_Pin
                           |MOTOR_EN2_Pin, GPIO_PIN_RESET);
+#if FOC_M1_ONLY
+  HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin, GPIO_PIN_SET);
+#endif
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, SPI2_CS_Pin|LEDA_Pin|LEDB_Pin|LEDC_Pin

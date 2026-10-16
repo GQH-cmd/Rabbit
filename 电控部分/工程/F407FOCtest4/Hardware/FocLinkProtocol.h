@@ -1,6 +1,7 @@
 #ifndef FOC_LINK_PROTOCOL_H
 #define FOC_LINK_PROTOCOL_H
 #include <stdint.h>
+#include "MotorAxesConfig.h"
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,6 +21,8 @@
 #define FLP_CONTACT0 16
 #define FLP_CONTACT1 32
 #define FLP_SPI_OWNER 64
+/* 显式配对能力位；旧版解析器拒绝此位，不能把旧双轴故障误当单轴正常。 */
+#define FLP_M1_ONLY 128
 #define FLP_ACCEPTED 1
 #define FLP_PONG 2
 #define FLP_BAD_COMMAND 3
@@ -76,7 +79,8 @@ static inline void flp_reply(uint8_t* p,const FlpStatus* s) {
   flp_put32(p+36,s->badFrames);flp_finish(p);
 }
 static inline int flp_read_reply(const uint8_t* p,FlpStatus* s) {
-  if(!flp_valid(p,0x5a)||!(p[2]&FLP_READY)||(p[2]&0x80)||p[3]>FLP_BAD_COMMAND||p[32]>3||p[33]>3)return 0;
+  if(!flp_valid(p,0x5a)||!(p[2]&FLP_READY)||p[3]>FLP_BAD_COMMAND||p[32]>3||p[33]>3)return 0;
+  if((p[2]&FLP_M1_ONLY)&&((p[2]&(FLP_ENCODER0|FLP_CONTACT0))||p[32]||flp_get32(p+16)||flp_get32(p+24)))return 0;
   if((p[2]&FLP_ACK)&&(!flp_get32(p+4)||!p[3]))return 0;
   for(int i=40;i<62;++i)if(p[i])return 0;
   s->flags=p[2];s->result=p[3];s->id=flp_get32(p+4);s->sample=flp_get32(p+8);s->uptime=flp_get32(p+12);

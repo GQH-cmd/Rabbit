@@ -147,20 +147,26 @@ void Current_Init(void)
 	adc_offset_4 = 0;
 //	adc_offset_5 = 0;
 //	adc_offset_6 = 0;
+#if !FOC_M1_ONLY
 	HAL_ADC_Start(&hadc1);
+#endif
 	HAL_ADC_Start(&hadc2);
 	for (int i = 0; i < samples; i++)
 	{
+#if !FOC_M1_ONLY
 		adc_offset_1 += HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
 		adc_offset_2 += HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2);
+#endif
 		adc_offset_3 += HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_1);
 		adc_offset_4 += HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_2);
 //		adc_offset_5 += HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_3);
 //		adc_offset_6 += HAL_ADCEx_InjectedGetValue(&hadc2, ADC_INJECTED_RANK_3);
 		HAL_Delay(1); // 适当延时确保采样完成
 	}
+#if !FOC_M1_ONLY
 	adc_offset_1 /= samples;
 	adc_offset_2 /= samples;
+#endif
 	adc_offset_3 /= samples;
 	adc_offset_4 /= samples;
 //	adc_offset_5 /= samples;
@@ -174,8 +180,19 @@ void Current_Init(void)
  */
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
+	if (motor_axes_fault(M0_EncoderType == ENCODER_DISABLED, M1_EncoderType == ENCODER_DISABLED))
+	{
+		M0_Curs.iqr = 0.0f; M1_Curs.iqr = 0.0f;
+		SetSVPWM(0, 0.0f, 0.0f, 0.0f);
+		SetSVPWM(1, 0.0f, 0.0f, 0.0f);
+		return;
+	}
   if (hadc->Instance == ADC1)
   {
+#if FOC_M1_ONLY
+        /* M0永久停用；不能因缺席阻挡ADC2，也不再采样M0编码器。 */
+        return;
+#endif
 		/*** 读取ADC原始值 ***/	
 		uint32_t adc_value_1 = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_1);
 		uint32_t adc_value_2 = HAL_ADCEx_InjectedGetValue(&hadc1, ADC_INJECTED_RANK_2);
@@ -191,15 +208,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		M0_Curs.iu = u_2 / (R_SHUNT * GAIN);
 		M0_Curs.iv =  -(M0_Curs.iu + M0_Curs.iw);
 
-		if (M0_EncoderType == ENCODER_DISABLED)
-		{
-			M0_Curs.iqr = 0.0f;
-			M0_Curs.Ud = 0.0f;
-			M0_Curs.Uq = 0.0f;
-			SetSVPWM(M0_Motor.motorNum, 0.0f, 0.0f, 0.0f);
-			return;
-		}
-		
 		/*** 电机编码器读取角度 ***/
 		if (M0_EncoderType == 0)
 		{ // AS5600
@@ -212,6 +220,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		{ // AS5047
 			SPI2_AS5047P_GetAngle();
 		}
+		if (M0_EncoderType == ENCODER_DISABLED) return;
 	  
 		/*** 指定运行模式 ***/
 		if (M0.mode == 0)
@@ -251,17 +260,6 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		M1_Curs.iu = u_2 / (R_SHUNT * GAIN);
 		M1_Curs.iv =  -(M1_Curs.iu + M1_Curs.iw);
 
-		/* 未接第二个电机/编码器时，禁止进入M1控制和I2C2/SPI3读取，
-		 * 否则会把缺失的AS5600当成通信故障反复处理。 */
-		if (M1_EncoderType == ENCODER_DISABLED)
-		{
-			M1_Curs.iqr = 0.0f;
-			M1_Curs.Ud = 0.0f;
-			M1_Curs.Uq = 0.0f;
-			SetSVPWM(M1_Motor.motorNum, 0.0f, 0.0f, 0.0f);
-			return;
-		}
-	  
 		/*** 电机编码器读取角度 ***/
 		if (M1_EncoderType == 0)
 		{ // AS5600
@@ -274,6 +272,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		{ // AS5047
 			SPI3_AS5047P_GetAngle();
 		}
+		if (M1_EncoderType == ENCODER_DISABLED) return;
 	  
 		/*** 指定运行模式 ***/
 		if (M1.mode == 0)

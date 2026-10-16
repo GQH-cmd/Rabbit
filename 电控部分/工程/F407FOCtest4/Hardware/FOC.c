@@ -25,6 +25,11 @@
 #define M1_PolePairs	7
 #define Udc				12.0f
 
+/* 速度环安全界限：实测速率超出目标两倍加 150 RPM，或明显反向，立即断开两路电机。 */
+#define VELOCITY_FAULT_BASE_RPM   150.0f
+#define VELOCITY_FAULT_MULTIPLIER 2.0f
+#define VELOCITY_FAULT_REVERSE_RPM 60.0f
+
 /* Private Variables --------------------------------------------------------*/
 PIDController M0_iq_pid;
 PIDController M0_id_pid;
@@ -43,12 +48,147 @@ struct MovingAverageFilter pos0_avg_filter;
 struct MovingAverageFilter pos1_avg_filter;
 
 float32_t zero = 0.0f;
+volatile uint8_t FOC_VelocityFault = 0U;
+volatile uint8_t FOC_HardwareBreakFault = 0U;
+volatile uint8_t FOC_M1CalibrationValid = 0U;
+volatile uint8_t FOC_M1RecoveryHold = 0U;
 static uint8_t is_in_vel0_loop = 0;
 static uint8_t is_in_vel1_loop = 0;
+
+static uint8_t FOC_IsVelocityUnsafe(float32_t target_rpm, float32_t measured_rps)
+{
+	float32_t measured_rpm = measured_rps * 60.0f;
+	float32_t target_abs = (target_rpm < 0.0f) ? -target_rpm : target_rpm;
+	float32_t measured_abs = (measured_rpm < 0.0f) ? -measured_rpm : measured_rpm;
+	float32_t limit = VELOCITY_FAULT_BASE_RPM + VELOCITY_FAULT_MULTIPLIER * target_abs;
+	if (measured_abs > limit) return 1U;
+	if (target_abs >= 5.0f && target_rpm * measured_rpm < 0.0f &&
+	    measured_abs > VELOCITY_FAULT_REVERSE_RPM) return 1U;
+	return 0U;
+}
+
+static void FOC_StopForVelocityFault(uint8_t motor)
+{
+	FOC_VelocityFault = motor;
+	M0.mode = MODE_OPEN; M0.param.Ope = 0.0f;
+	M1.mode = MODE_OPEN; M1.param.Ope = 0.0f;
+	M0_Curs.iqr = 0.0f; M1_Curs.iqr = 0.0f;
+	M0_Vels.velocityTar = 0.0f; M1_Vels.velocityTar = 0.0f;
+	SetSVPWM(0, 0.0f, 0.0f, 0.0f);
+	SetSVPWM(1, 0.0f, 0.0f, 0.0f);
+	HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin | MOTOR_EN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin | M1_BK_OUT_Pin, GPIO_PIN_SET);
+}
 
 /* 外部变量声明 */
 extern uint8_t M0_EncoderType; // 从main.c导入编码器类型变量
 extern uint8_t M1_EncoderType;
+
+void FOC_M1EncoderFaultStop(void)
+{
+    /* 故障先关硬输出，再清旧命令；历史错误位仍保留用于诊断。 */
+    __HAL_TIM_MOE_DISABLE_UNCONDITIONALLY(&htim8);
+    HAL_GPIO_WritePin(GPIOE, M1_BK_OUT_Pin, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin | MOTOR_EN2_Pin, GPIO_PIN_RESET);
+    M0.mode = MODE_OPEN; M0.param.Ope = 0.0f;
+    M1.mode = MODE_OPEN; M1.param.Ope = 0.0f;
+    M0_Curs.iqr = M1_Curs.iqr = 0.0f;
+    M0_Vels.velocityTar = M1_Vels.velocityTar = 0.0f;
+    M1_EncoderType = ENCODER_DISABLED;
+    FOC_M1RecoveryHold = 1U;
+}
+
+uint8_t FOC_M1RecoverEncoder(void)
+{
+#if FOC_M1_ONLY
+    uint8_t good = 0U, data[2] = {0};
+    uint16_t previous = 0U, raw = 0U;
+    uint32_t previous_ms = 0U;
+    /* 本入口含有限等待，只能从IRQ可抢占的主循环调用。 */
+    if (__get_PRIMASK() || __get_IPSR()) return 0U;
+    if (__HAL_TIM_GET_FLAG(&htim8, TIM_FLAG_BREAK) != RESET) FOC_HardwareBreakFault |= 2U;
+    if (FOC_VelocityFault || FOC_HardwareBreakFault || M0.mode != MODE_OPEN || M0.param.Ope != 0.0f ||
+        M1.mode != MODE_OPEN || M1.param.Ope != 0.0f) {
+        printf("ENCODER_RECOVERY rejected_stop_first_or_safety_fault\r\n");return 0U;
+    }
+    if (M1_EncoderType == ENCODER_AS5600 && !FOC_M1RecoveryHold)
+        return FOC_M1CalibrationValid;
+    FOC_M1EncoderFaultStop();
+    /* 仅在PWM硬关闭、制动保持时恢复供电并等稳。不会输出校准电压。 */
+    const uint32_t power_irq = __get_PRIMASK();
+    __disable_irq();
+    if (FOC_HardwareBreakFault || FOC_VelocityFault ||
+        __HAL_TIM_GET_FLAG(&htim8, TIM_FLAG_BREAK) != RESET) {
+        __set_PRIMASK(power_irq);return 0U;
+    }
+    HAL_GPIO_WritePin(GPIOE, MOTOR_EN1_Pin, GPIO_PIN_SET);
+    __set_PRIMASK(power_irq);
+    HAL_Delay(100U); /* 与电源模式1相同的等待，不把延时放进IRQ临界区。 */
+    for (uint8_t attempt = 0U; attempt < 5U; ++attempt) {
+        if (FOC_HardwareBreakFault || FOC_VelocityFault) {
+            FOC_M1EncoderFaultStop();return 0U;
+        }
+        if (AS5600_RdReg(&hi2c2, RAW_ANGLE_H, data, 2U) == AS5600_OK) {
+            const uint32_t now = HAL_GetTick();
+            raw = (uint16_t)(((data[0] & 0x0fU) << 8) | data[1]);
+            if (good) {
+                int32_t delta = (int32_t)raw - previous;
+                const uint32_t elapsed = now - previous_ms;
+                if (delta > 2048) delta -= 4096;
+                if (delta < -2048) delta += 4096;
+                if (delta < 0) delta = -delta;
+                /* 真实新角度确认静止，不能把故障时填的零速当成停稳。 */
+                if (!elapsed || elapsed > 1000U ||
+                    (uint64_t)delta * 60000U > (uint64_t)65U * 4096U * elapsed)
+                    good = 0U;
+            }
+            ++good;previous = raw;previous_ms = now;
+            if (good >= 3U) break;
+        } else good = 0U;
+        if (attempt < 4U) HAL_Delay(20U);
+    }
+    if (good < 3U || !FOC_M1CalibrationValid) {
+        FOC_M1EncoderFaultStop();
+        printf("ENCODER_RECOVERY %s; M1 stays off\r\n",
+               good < 3U ? "failed_read_or_motion" : "probe_ok_calibration_required");
+        return 0U;
+    }
+    /* 原子提交健康状态；控制ISR重新采样，但MOE/制动保持到下一条新命令。 */
+    const uint32_t irq = __get_PRIMASK();
+    __disable_irq();
+    if (FOC_HardwareBreakFault || FOC_VelocityFault ||
+        __HAL_TIM_GET_FLAG(&htim8, TIM_FLAG_BREAK) != RESET) {
+        FOC_M1EncoderFaultStop();__set_PRIMASK(irq);return 0U;
+    }
+    Sensor1.rawAngle = raw;Sensor1.angle = raw * (2.0f * PI / 4095.0f);
+    Sensor1.result = AS5600_OK;Sensor1.velocity = 0.0f;
+    Sensor1.angleTs = get_micros();Sensor1.angleFresh = false;
+    Sensor1.velocityInitialized = false;
+    PIDController *pids[4] = {&M1_iq_pid, &M1_id_pid, &M1_vel_pid, &M1_pos_pid};
+    for (uint8_t i = 0U; i < 4U; ++i) pids[i]->errorSum = pids[i]->lastError = 0.0f;
+    is_in_vel1_loop = 0U;
+    M1_EncoderType = ENCODER_AS5600;
+    __set_PRIMASK(irq);
+    printf("ENCODER_RECOVERY ready_wait_new_command raw=%u history=0x%02X\r\n",
+           (unsigned int)raw, (unsigned int)AS5600_ReadFaults);
+    return 1U;
+#else
+    return 0U;
+#endif
+}
+
+uint8_t FOC_M1ReleaseRecoveryHold(void)
+{
+    if (__HAL_TIM_GET_FLAG(&htim8, TIM_FLAG_BREAK) != RESET) FOC_HardwareBreakFault |= 2U;
+    if (FOC_HardwareBreakFault) return 0U;
+    if (!FOC_M1RecoveryHold) return 1U;
+    if (!FOC_M1CalibrationValid || FOC_VelocityFault || M1_EncoderType != ENCODER_AS5600)
+        return 0U;
+    HAL_GPIO_WritePin(GPIOE, M1_BK_OUT_Pin, GPIO_PIN_RESET);
+    __HAL_TIM_MOE_ENABLE(&htim8);
+    FOC_M1RecoveryHold = 0U;
+    return 1U;
+}
 
 /* Code -------------------------------------------------------------------*/
 /**
@@ -58,6 +198,11 @@ extern uint8_t M1_EncoderType;
  */
 void FOC_Init(void)
 {
+    FOC_M1CalibrationValid = 0U;
+#if FOC_M1_ONLY
+    M0_EncoderType = ENCODER_DISABLED;
+    M0.mode = MODE_OPEN; M0.param.Ope = 0.0f;
+#endif
 	Motor_Init(&M0_Motor, 0, M0_PolePairs); 		// motorNum 设置为 0
 	Motor_Init(&M1_Motor, 1, M1_PolePairs);			// motorNum 设置为 1
 	
@@ -105,11 +250,23 @@ void FOC_Init(void)
 	
 	/* 零电角度初始化 */
 	Check_Zero_Angle();
+	if (motor_axes_fault(M0_EncoderType == ENCODER_DISABLED, M1_EncoderType == ENCODER_DISABLED))
+	{
+		SetSVPWM(0, 0.0f, 0.0f, 0.0f); SetSVPWM(1, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 
 	/* 判断电机方向 */
 	Check_Dir();
+	if (motor_axes_fault(M0_EncoderType == ENCODER_DISABLED, M1_EncoderType == ENCODER_DISABLED))
+	{
+		SetSVPWM(0, 0.0f, 0.0f, 0.0f); SetSVPWM(1, 0.0f, 0.0f, 0.0f);
+		return;
+	}
 	
 	/* 滤波函数初始化 */
+    if (M1_EncoderType != ENCODER_DISABLED &&
+        (M1_Motor.dir == 1 || M1_Motor.dir == -1)) FOC_M1CalibrationValid = 1U;
 //	MovingAvg_Init(&iq0_avg_filter, 3);
 //	MovingAvg_Init(&iq1_avg_filter, 3);
 //	MovingAvg_Init(&vel0_avg_filter, 5);
@@ -190,6 +347,7 @@ void Check_Dir(void)
 		{ // AS5047
 			SPI3_AS5047P_GetAngle();
 		}
+		if (motor_axes_fault(M0_EncoderType == ENCODER_DISABLED, M1_EncoderType == ENCODER_DISABLED)) return;
 
 		angle += 0.1f;
 		
@@ -560,6 +718,12 @@ void M0_VelLoop(void)
 		{ // AS5047
 			velocity_feedback = Sensor2.velocity / (2 * PI); // rad/s → RPS
 		}
+		if (FOC_IsVelocityUnsafe(M0_Vels.velocityTar, velocity_feedback))
+		{
+			FOC_StopForVelocityFault(1U);
+			is_in_vel0_loop = 0;
+			return;
+		}
 		
         M0_Vels.velocity = PID(&M0_vel_pid, M0_Vels.velocityTar / 60.0f, velocity_feedback) * M0_Motor.dir;
 		
@@ -612,8 +776,16 @@ void M1_VelLoop(void)
 		{ // AS5047
 			velocity_feedback = Sensor3.velocity / (2 * PI); // rad/s → RPS
 		}
+		if (FOC_IsVelocityUnsafe(M1_Vels.velocityTar, velocity_feedback))
+		{
+			FOC_StopForVelocityFault(2U);
+			is_in_vel1_loop = 0;
+			return;
+		}
 		
-        M1_Vels.velocity = PID(&M1_vel_pid, M1_Vels.velocityTar / 60.0f, velocity_feedback) * -M1_Motor.dir;
+        /* M1 实测：目标 +10 RPM 时，-dir 产生负电流并加速到约 -979 RPM，形成正反馈。
+         * 与 M0 一样按校准得到的 dir 修正输出极性。 */
+        M1_Vels.velocity = PID(&M1_vel_pid, M1_Vels.velocityTar / 60.0f, velocity_feedback) * M1_Motor.dir;
 		
 		// 速度环 PID 输出作为电流目标
         M1_Curs.iqr = M1_Vels.velocity;
@@ -836,6 +1008,17 @@ SVPWM_Outputs CalculateSVPWM(float32_t Uq, float32_t Ud, float32_t eAngle)
  */
 void SetSVPWM(float32_t motorNum, float32_t Uq, float32_t Ud, float32_t eAngle)
 {
+#if FOC_M1_ONLY
+    if (motorNum == 0.0f)
+    {
+        /* 所有调用路径的硬出口：M0三相比较值为0、制动保持，不计算驱动。 */
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0U);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_2, 0U);
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, 0U);
+        HAL_GPIO_WritePin(GPIOE, M0_BK_OUT_Pin, GPIO_PIN_SET);
+        return;
+    }
+#endif
 	SVPWM_Outputs outputs = CalculateSVPWM(Uq, Ud, eAngle);
 	// 电机0使用TIM1
 	if (motorNum == 0)
