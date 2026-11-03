@@ -20,6 +20,8 @@ if ($LASTEXITCODE -ne 0) { throw 'AS5600采样/测速主机回归失败' }
 if ($LASTEXITCODE -ne 0) { throw '单M1跨控制器主机回归失败' }
 & $PythonLauncher @pythonArgs (Join-Path $PSScriptRoot 'verify_encoder_recovery.py')
 if ($LASTEXITCODE -ne 0) { throw '编码器停机重检回归失败' }
+& $PythonLauncher @pythonArgs (Join-Path $gateway 'verify_network_save.py')
+if ($LASTEXITCODE -ne 0) { throw '网络配置保存诊断回归失败' }
 $pythonArgs += (Join-Path $gateway 'verify_duplex.py')
 
 & (Join-Path $project 'build-gcc\esp32_spi\generate_feed_stage_config.ps1')

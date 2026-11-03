@@ -1,6 +1,8 @@
 #pragma once
 #include <atomic>
 #include <esp_system.h>
+#include <esp_err.h>
+#include <nvs.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
@@ -53,13 +55,42 @@ static bool loadConfig() {
   p.end();
   return ok && gateway::validConfig(config);
 }
+static bool reportNetworkSaveFailure(const char* stage,esp_err_t error,size_t expected=0,size_t actual=0) {
+  // 不依赖 CORE_DEBUG_LEVEL；只打印阶段/错误码/容量，不泄露任何配置字段。
+  Serial.printf("NET_SAVE_FAIL stage=%s err=0x%08lX (%s) expected=%lu actual=%lu\n",
+    stage,static_cast<unsigned long>(error),esp_err_to_name(error),
+    static_cast<unsigned long>(expected),static_cast<unsigned long>(actual));
+  nvs_stats_t stats{};
+  const esp_err_t statsError=nvs_get_stats(nullptr,&stats);
+  if(statsError==ESP_OK) {
+    Serial.printf("NET_SAVE_NVS used=%lu free=%lu available=%lu total=%lu namespaces=%lu\n",
+      static_cast<unsigned long>(stats.used_entries),static_cast<unsigned long>(stats.free_entries),
+      static_cast<unsigned long>(stats.available_entries),static_cast<unsigned long>(stats.total_entries),
+      static_cast<unsigned long>(stats.namespace_count));
+  } else {
+    Serial.printf("NET_SAVE_NVS stats_error=0x%08lX (%s)\n",
+      static_cast<unsigned long>(statsError),esp_err_to_name(statsError));
+  }
+  return false;
+}
 static bool persistConfig(const gateway::Config& next) {
-  Preferences p;
-  if(!p.begin("rabbitnet",false)) return false;
-  bool ok=p.putBytes("config",&next,sizeof(next))==sizeof(next);
+  // 与 Preferences 使用同一默认NVS分区、namespace/key和完整blob格式；不擦除/重初始化。
+  nvs_handle_t handle=0;
+  esp_err_t error=nvs_open("rabbitnet",NVS_READWRITE,&handle);
+  if(error!=ESP_OK)return reportNetworkSaveFailure("open",error);
+  error=nvs_set_blob(handle,"config",&next,sizeof(next));
+  if(error!=ESP_OK){nvs_close(handle);return reportNetworkSaveFailure("write",error,sizeof(next));}
+  error=nvs_commit(handle);
+  if(error!=ESP_OK){nvs_close(handle);return reportNetworkSaveFailure("commit",error,sizeof(next));}
   gateway::Config verify{};
-  ok=ok && p.getBytes("config",&verify,sizeof(verify))==sizeof(verify) && memcmp(&next,&verify,sizeof(next))==0;
-  p.end(); return ok;
+  size_t actual=sizeof(verify);
+  error=nvs_get_blob(handle,"config",&verify,&actual);
+  nvs_close(handle);
+  if(error!=ESP_OK)return reportNetworkSaveFailure("readback",error,sizeof(next),actual);
+  if(actual!=sizeof(next))return reportNetworkSaveFailure("verify_length",ESP_ERR_INVALID_SIZE,sizeof(next),actual);
+  if(memcmp(&next,&verify,sizeof(next))!=0)return reportNetworkSaveFailure("verify_mismatch",ESP_FAIL,sizeof(next),actual);
+  Serial.printf("NET_SAVE_OK bytes=%lu\n",static_cast<unsigned long>(actual));
+  return true;
 }
 static bool clearConfig() {
   Preferences p;
@@ -514,17 +545,32 @@ static void networkTask(void*) {
   if(!mqtt.setBufferSize(1536)){Serial.println("ERR MQTT_NO_MEMORY");vTaskDelete(nullptr);return;}
   mqtt.setSocketTimeout(2);mqtt.setKeepAlive(10);networkTaskReady=true;
   uint32_t retry=0,lastPublish=0,lastWifiRetry=0;
+  bool localNetworkPaused=false;
   Snapshot snapshot{};
   for(;;) {
+    // LOCAL不再发起网络连接；已经在线的MQTT保留，以继续接收远程STOP。
+    // 所有STA操作仍由网络任务执行，避免串口线程与重连任务同时改连接状态。
+    const bool localMode=localOnly.load();
+    if(localMode&&!localNetworkPaused) {
+      WiFi.setAutoReconnect(false);
+      // 不关闭无线/AP、不清除配置；只取消还未成功的STA连接。
+      if(WiFi.status()!=WL_CONNECTED&&!WiFi.disconnect(false,false))
+        Serial.println("NETWORK_LOCAL_CANCEL_FAILED; reconnect remains paused");
+      localNetworkPaused=true;
+      Serial.println("NETWORK_LOCAL_PAUSED; existing online MQTT STOP link retained");
+    } else if(!localMode&&localNetworkPaused) {
+      WiFi.setAutoReconnect(true);localNetworkPaused=false;lastWifiRetry=millis();
+    }
     if(portal.load()||WiFi.status()!=WL_CONNECTED) {
       netOnline=false;
       if(mqtt.connected())mqtt.disconnect();
       transport.stop();
-      if(!portal.load()&&millis()-lastWifiRetry>=10000){lastWifiRetry=millis();WiFi.reconnect();}
+      if(!portal.load()&&!localOnly.load()&&millis()-lastWifiRetry>=10000){lastWifiRetry=millis();WiFi.reconnect();}
       vTaskDelay(pdMS_TO_TICKS(50));continue;
     }
     if(!mqtt.connected()) {
       netOnline=false;
+      if(localOnly.load()){vTaskDelay(pdMS_TO_TICKS(50));continue;}
       if(millis()-retry<3000){vTaskDelay(pdMS_TO_TICKS(20));continue;}
       retry=millis();randomToken(session,sizeof(session));++netEpoch;
       xQueueReset(commands);xQueueReset(acks);memset(recent,0,sizeof(recent));recentIndex=0;
@@ -533,7 +579,7 @@ static void networkTask(void*) {
       snprintf(will,sizeof(will),"{\"device_id\":\"%s\",\"mqtt\":0,\"event\":\"offline\"}",config.device);
       bool ok=mqtt.connect(clientId,config.username[0]?config.username:nullptr,config.username[0]?config.password:nullptr,topicStatus,1,true,will);
       if(!ok){Serial.printf("MQTT_CONNECT_FAILED state=%d\n",mqtt.state());continue;}
-      if(portal.load()||!mqtt.subscribe(topicCmd,1)){mqtt.disconnect();continue;}
+      if(portal.load()||localOnly.load()||!mqtt.subscribe(topicCmd,1)){mqtt.disconnect();continue;}
       netOnline=true;lastPublish=millis()-1000;
       Serial.printf("MQTT_CONNECTED session_id=%s\n",session);
     }
@@ -579,7 +625,7 @@ static void handleLocal(char* line) {
   if(upper=="HELP"||upper=="?") {
     Serial.println("LOCAL / CONFIG / FACTORY_RESET / STATUS / PING / RECOVER / ARM / FEED / STOP; MQTT motion requires current session_id; request_id OPTIONAL; KEEPALIVE every 1s");
     Serial.println("RECOVER: local only, STOP and wait ACK first; 3 fresh stationary encoder reads; no automatic ARM, calibration or motion replay");
-    Serial.println("LOCAL: exit setup while stopped; no WiFi/MQTT needed; re-PING before FEED; remote STOP remains available; reboot resets mode");
+    Serial.println("LOCAL: pause new WiFi/MQTT connections; retain an existing online remote STOP link; re-PING before FEED; CONFIG/reboot leaves local mode");
     Serial.println("FEED: automatic M1 o0,v100 down, contact-stop, timed milk, o0,v-100 return to a NEW contact and stop; no X movement or CLEAN");
     Serial.println("FEED_ABORT: original checked frame, printed after STOP; rpm*_x100 units = 0.01 RPM");
     Serial.println("LOCAL DIAGNOSTICS: RELAY CONFIG LOW|HIGH [LOW|HIGH]; RELAY MILK|WATER 1..2000; RELAY OFF; RELAY STATUS; SPITEST 1..50");return;
@@ -612,7 +658,7 @@ static void begin() {
   if(!commands||!stops||!acks||!snapshots){Serial.println("FATAL QUEUE_NO_MEMORY");return;}
   nextId=esp_random();
   configured=loadConfig();
-    Serial.println("Rabbit ESP32-S3 gateway v8.2 M1_ONLY AUTO_FEED_RETURN RECOVER; paired FOC_M1_ONLY required; boot sends NO SPI command");reportStatus();
+  Serial.println("Rabbit ESP32-S3 gateway v8.2.2 M1_ONLY AUTO_FEED_RETURN RECOVER LOCAL_WIFI_PAUSE NET_SAVE_DIAG; paired FOC_M1_ONLY required; boot sends NO SPI command");reportStatus();
     Serial.println("USB-only: LOCAL, PING, wait foc_pong, then FEED starts M1 automatically and returns after milk; STOP cancels the cycle");
   if(!configured){config=gateway::Config{};startPortal();return;}
   snprintf(topicCmd,sizeof(topicCmd),"rabbit/%s/cmd",config.device);snprintf(topicAck,sizeof(topicAck),"rabbit/%s/ack",config.device);snprintf(topicStatus,sizeof(topicStatus),"rabbit/%s/status",config.device);

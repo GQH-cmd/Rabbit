@@ -1,8 +1,42 @@
-# ESP32-S3 配网 / MQTT / SPI 网关 v8.2（单M1一键喂奶及反向回程）
+# ESP32-S3 配网 / MQTT / SPI 网关 v8.2.2（单M1一键喂奶及反向回程）
+
+## v8.2.2：网络配置保存分阶段诊断（2026-10-20，已烧录并验证启动）
+
+- 解决“保存失败，检查串口”却因 `CORE_DEBUG_LEVEL=0` 看不到 Preferences 错误的诊断缺口；**不表示已修复实机的底层存储故障**。
+- 保存仍使用默认 NVS 分区的 `rabbitnet/config` 完整记录，字段、版本、校验格式不变。使用同一组 NVS API 获取真实返回码；不清空/擦除 NVS，不自动初始化或重试，不修改供奶、运动、网络连接或参数校验条件。
+- 串口始终打印 `NET_SAVE_FAIL stage=open|write|commit|readback|verify_length|verify_mismatch`、错误名称/代码及容量统计；不打印 SSID、WiFi/MQTT 密码、用户名、主机或设备 ID。
+- 成功完成写入、提交和回读校验后打印 `NET_SAVE_OK bytes=...`；页面仍按原流程提示成功并重启，失败不安排重启。
+- `Tests/esp32_spi_bridge/verify_network_save.py` 提取生产保存函数，覆盖各失败阶段、正常回读、资源释放、原存储格式、日志无敏感值，以及禁止自动擦除/重初始化；已加入 `Tests/verify_feed_stage.ps1`。
+- 启动标识含 `v8.2.2 ... NET_SAVE_DIAG`。已在当前 COM8 的 ESP32-S3 上读到该实机启动标识；本次保存得到 `NET_SAVE_OK bytes=472`，用户确认页面显示成功并重启。原有失败本次未复现，不能据此断言其底层原因或长期稳定性已证明。
+
+2026-10-20 当前 COM8 实测：物理 Flash 为16MB，但原分区表使用默认4MB布局。已先备份分区表、NVS、OTA选择和旧app0；本次只把962896字节的诊断应用写入既有app0（`0x10000`，容量1310720字节），写入哈希校验通过。未写入发布包内的16MB分区表、Bootloader或`boot_app0.bin`；启动前回读逐字节确认原分区表、NVS和OTA选择未变。动力及FOC信号线均断开，仅发送STATUS/CONFIG，不验证SPI、电机或泵。
+
+发布目录：`E:\养兔子\FOC_all\3_F407FOCtest4_new\build-gcc\esp32_spi\release_mqtt_provisioned_com_20261020_200536`。
+烧录与启动证据：`E:\养兔子\_flash_runs\ESP32_NVS_DIAG_OFFLINE_20261020_193848\installation_verified.json`、同目录`network_save_live.log`。该目录中的NVS原始备份可能包含网络凭据，不能随源码提交或公开。
+
+保存复测：生产函数完成写入、提交和回读比较并报告472字节成功。重启时串口采集脚本因Windows GBK输出无法编码ROM乱码而退出（不是固件崩溃）；脚本已改为UTF-8输出。随后Arduino重新占用COM8，未能完成重启后的STATUS复核，也未验证Wi-Fi/MQTT连接成功；可在现有监视器发送STATUS检查`config=1`，保存成功不等于联网成功。
+
+## v8.2.1：LOCAL 暂停网络重连（2026-10-18）
+
+旧版 `LOCAL` 只切换控制权，Wi-Fi 自动重连和每10秒手动重连仍在运行，可能继续打印 `sta is connecting`。
+新版切换后由网络任务关闭自动重连、取消尚未完成的 STA 连接，并暂停新的 Wi-Fi/MQTT 连接。
+不清除已保存的 Wi-Fi/MQTT 配置，也不关闭配网 AP。已在线的 MQTT 连接继续处理远程 STOP；
+如果它随后断线，LOCAL 中不再主动重连。`CONFIG` 仍可重新配网，重启后仍按原配置进入 NETWORK。
+
+串口新增一次性提示 `NETWORK_LOCAL_PAUSED`，启动标识含 `v8.2.1` 和 `LOCAL_WIFI_PAUSE`。
+此修复不保证 NETWORK 模式能接入目标热点；SSID、认证或供电等连接失败原因仍需单独诊断。
+STM32 固件、SPI协议、FEED运动/泵保护及继电器配置不变。
+
+2026-10-18 已通过 COM13 上传 v8.2.1，四段写入哈希校验通过。仅逻辑供电实测：
+同样进入 LOCAL 后观察26秒，旧 v8.2 出现3次 `sta is connecting`，新版为0次，
+且收到 `NETWORK_LOCAL_PAUSED`。保存的配置仍存在，两路继电器关闭，SPI命令计数为0；
+没有发送 PING、FEED、运动或开泵命令，本次未验证联网 MQTT STOP 或供奶/回程实物闭环。
+发布目录：`E:\养兔子\FOC_all\3_F407FOCtest4_new\build-gcc\esp32_spi\release_mqtt_provisioned_com_20261018_213517`。
+上传与实机观察证据：`E:\养兔子\_flash_runs\ESP32_LOCAL_20261018_204754\flash_receipt.json`。
 
 目标板：ESP32-S3 / S3-N16R8。ESP32 负责网络配置、命令检查与 SPI 转发；兔子档案、喂养计划和数据库由网站后端负责。
 
-## v8.2 当前流程（2026-10-16，候选，尚未烧录）
+## v8.2 继承流程（2026-10-16设计，v8.2.1保留）
 
 `FEED` 不再仅启用监听，而是发起完整单M1循环：`o0,v100`下降 → 匹配运动回执和本次新运动 → 第一次接触后STOP回执及3个新停稳样本 → 奶泵3000ms并关闭 → `o0,v-100`回程 → 旧接触清除、匹配回执和2个新反向运动样本 → 第二次新接触后STOP回执及3个新停稳样本 → `cycle_complete`。
 
@@ -10,7 +44,7 @@
 
 本候选仅使用已经确认的正反馈下降配置`FEED_DOWN_RPM_SIGN=1`，运动命令固定为`o0,v100`和`o0,v-100`。沿用STM32既有65 RPM判定、M1故障保护、64字节SPI v2协议和GPIO4奶泵输出，不含M0横移、清洗、双笼调度或绝对位置回零。回程的“接触”是现有M1低速接触标志，不是新增上限位传感器。
 
-说明：[一键FEED与回程候选](E:/养兔子/docs/ESP32_FEED自动下降与反向回程_2026-10-16.md)。候选仅在主机模拟及编译验证；没有烧录、运动或开泵实测，也没有修复BOOT0启动选择。
+设计时说明：[一键FEED与回程候选](E:/养兔子/docs/ESP32_FEED自动下降与反向回程_2026-10-16.md)。该文档记录当时的候选状态；v8.2.1 已上传，但本次只验证 LOCAL 网络暂停，没有进行运动或开泵实测，也没有修复BOOT0启动选择或STM32复位/编码器问题。
 
 ## 历史版本记录（以下发布包及验证仅属于对应历史固件）
 
