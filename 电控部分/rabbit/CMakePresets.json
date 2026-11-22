@@ -1,0 +1,77 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "default",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+		    "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
+            "cacheVariables": {
+            }
+        },
+        {
+            "name": "Debug",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "PumpLedTest",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "RABBIT_ENABLE_SELF_TEST": "OFF",
+                "RABBIT_ENABLE_PUMP_LED_TEST": "ON"
+            }
+        },
+        {
+            "name": "SelfTest",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "RABBIT_ENABLE_SELF_TEST": "ON",
+                "RABBIT_ENABLE_PUMP_LED_TEST": "OFF"
+            }
+        },
+        {
+            "name": "Simulation",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "RABBIT_ENABLE_PUMP_LED_TEST": "OFF",
+                "RABBIT_ENABLE_SIMULATION": "ON"
+            }
+        },
+        {
+            "name": "Release",
+            "inherits": "default",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Debug",
+            "configurePreset": "Debug"
+        },
+        {
+            "name": "PumpLedTest",
+            "configurePreset": "PumpLedTest"
+        },
+        {
+            "name": "SelfTest",
+            "configurePreset": "SelfTest"
+        },
+        {
+            "name": "Simulation",
+            "configurePreset": "Simulation"
+        },
+        {
+            "name": "Release",
+            "configurePreset": "Release"
+        }
+    ]
+}
